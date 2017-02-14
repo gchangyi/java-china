@@ -1,44 +1,36 @@
 package com.javachina.service.impl;
 
+import com.blade.ioc.annotation.Inject;
+import com.blade.ioc.annotation.Service;
+import com.blade.jdbc.ActiveRecord;
+import com.blade.kit.CollectionKit;
+import com.blade.kit.StringKit;
+import com.javachina.Types;
+import com.javachina.model.Comment;
+import com.javachina.model.Settings;
+import com.javachina.model.Topic;
+import com.javachina.model.User;
+import com.javachina.service.SettingsService;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.blade.ioc.annotation.Service;
-import com.blade.jdbc.AR;
-import com.javachina.Types;
-import com.javachina.model.Settings;
-import com.javachina.service.SettingsService;
-
-import blade.kit.CollectionKit;
-import blade.kit.StringKit;
-
 @Service
 public class SettingsServiceImpl implements SettingsService {
-	
-	@Override
-	public Settings getSettings(String skey) {
-		return AR.findById(Settings.class, skey);
-	}
-	
+
+	@Inject
+	private ActiveRecord activeRecord;
+
 	@Override
 	public boolean save( String svalue ) {
-		return false;
-	}
-	
-	@Override
-	public boolean delete(String skey) {
-		if(null != skey){
-			AR.update("delete from t_settings where skey = ?", skey).executeUpdate();
-			return true;
-		}
 		return false;
 	}
 
 	@Override
 	public Map<String, Object> getSystemInfo() {
 		Map<String, Object> map = new HashMap<String, Object>();
-		List<Settings> settings = AR.find("select * from t_settings").cache(false).list(Settings.class);
+		List<Settings> settings = activeRecord.list(new Settings());
 		if(CollectionKit.isNotEmpty(settings)){
 			for(Settings setting : settings){
 				map.put(setting.getSkey(), setting.getSvalue());
@@ -47,16 +39,23 @@ public class SettingsServiceImpl implements SettingsService {
 		return map;
 	}
 
+	private void update(String skey, Object value){
+		Settings temp = new Settings();
+		temp.setSvalue(value.toString());
+		temp.setSkey(skey);
+
+		activeRecord.update(temp);
+	}
 	@Override
 	public boolean updateCount(String skey, int count) {
 		try {
 			if (StringKit.isNotBlank(skey) && count != 0) {
-				Settings settings = AR.findById(Settings.class, skey);
+				Settings settings = activeRecord.byId(Settings.class, skey);
 				if (null != settings) {
 					if (StringKit.isNumber(settings.getSvalue().trim())) {
-						Long cur_count = Long.valueOf(settings.getSvalue().trim());
-						String val = (cur_count + count) + "";
-						AR.update("update t_settings set svalue = ? where skey = ?", val, skey).executeUpdate();
+						int cur_count = Integer.valueOf(settings.getSvalue().trim());
+						int val = cur_count + count;
+						this.update(skey, val);
 						return true;
 					}
 				}
@@ -69,14 +68,14 @@ public class SettingsServiceImpl implements SettingsService {
 
 	@Override
 	public boolean refreshCount() {
-		Long comments = AR.find("select count(1) from t_comment").first(Long.class);
-		Long users = AR.find("select count(1) from t_user where status = 1").first(Long.class);
-		Long topics = AR.find("select count(1) from t_topic where status = 1").first(Long.class);
-		
-		AR.update("update t_settings set svalue = ? where skey = ?", users, Types.user_count.toString()).executeUpdate();
-		AR.update("update t_settings set svalue = ? where skey = ?", comments, Types.comment_count.toString()).executeUpdate();
-		AR.update("update t_settings set svalue = ? where skey = ?", topics, Types.topic_count.toString()).executeUpdate();
-		
+		int comments = activeRecord.count(new Comment());
+		int users = activeRecord.count(new User());
+		int topics = activeRecord.count(new Topic());
+
+		this.update(Types.user_count.toString(), users);
+		this.update(Types.comment_count.toString(), comments);
+		this.update(Types.topic_count.toString(), topics);
+
 		return true;
 	}
 	
@@ -84,21 +83,17 @@ public class SettingsServiceImpl implements SettingsService {
 	public boolean update(String site_title, String site_keywords, String site_description, String allow_signup) {
 		try {
 			if (StringKit.isNotBlank(site_title)) {
-				AR.update("update t_settings set svalue = ? where skey = ?", site_title, "site_title")
-						.executeUpdate(true);
+				this.update("site_title", site_title);
 			}
 			if (StringKit.isNotBlank(site_keywords)) {
-				AR.update("update t_settings set svalue = ? where skey = ?", site_keywords, "site_keywords")
-						.executeUpdate(true);
+				this.update("site_keywords", site_keywords);
 			}
 			if (StringKit.isNotBlank(site_description)) {
-				AR.update("update t_settings set svalue = ? where skey = ?", site_description, "site_description")
-						.executeUpdate(true);
+				this.update("site_description", site_description);
 			}
 			if (StringKit.isNotBlank(allow_signup)) {
-				AR.update("update t_settings set svalue = ? where skey = ?", allow_signup, "allow_signup")
-						.executeUpdate(true);
-			} 
+				this.update("allow_signup", allow_signup);
+			}
 			return true;
 		} catch (Exception e) {
 			e.printStackTrace();

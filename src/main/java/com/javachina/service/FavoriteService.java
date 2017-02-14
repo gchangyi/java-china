@@ -1,20 +1,24 @@
 package com.javachina.service;
 
-import java.util.Map;
+import com.blade.jdbc.model.Paginator;
 
-import com.blade.jdbc.Page;
+import java.util.List;
+import java.util.Map;
 
 public interface FavoriteService {
 	
-	boolean isFavorite(String type, Long uid, Long event_id);
+	boolean isFavorite(String type, Integer uid, Integer event_id);
 	
 	// 查询我收藏的帖子
-	Page<Map<String, Object>> getFavorites(Long uid, Integer page, Integer count);
+	Paginator<Map<String, Object>> getMyTopics(Integer uid, int page, int count);
 	
 	// 查询我关注的用户
-	Page<Map<String, Object>> getFollowing(Long uid, Integer page, Integer count);
+	Paginator<Map<String, Object>> getFollowing(Integer uid, int page, int count);
 	
-	Long save(String type, Long uid, Long eventId);
+	// 查询我收藏的节点
+	List<Map<String, Object>> getMyNodes(Integer uid);
 	
-	Long favorites(String type, Long uid);
+	Integer update(String type, Integer uid, Integer eventId);
+	
+	Integer favorites(String type, Integer uid);
 }

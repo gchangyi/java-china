@@ -1,43 +1,33 @@
 package com.javachina.service.impl;
 
-import java.util.List;
-
-import com.blade.context.BladeWebContext;
+import com.blade.context.WebContextHolder;
+import com.blade.ioc.annotation.Inject;
 import com.blade.ioc.annotation.Service;
-import com.blade.jdbc.AR;
-import com.blade.jdbc.QueryParam;
+import com.blade.jdbc.ActiveRecord;
+import com.blade.kit.DateKit;
+import com.javachina.config.DBConfig;
 import com.javachina.kit.Utils;
 import com.javachina.model.Userlog;
 import com.javachina.service.UserlogService;
 
-import blade.kit.DateKit;
-
 @Service
 public class UserlogServiceImpl implements UserlogService {
-	
+
+	@Inject
+	private ActiveRecord activeRecord;
+
 	@Override
-	public List<Userlog> getUserlogList(QueryParam queryParam) {
-		if(null != queryParam){
-			return AR.find(queryParam).list(Userlog.class);
-		}
-		return null;
-	}
-	
-	@Override
-	public void save(final Long uid, final String action, final String content) {
-		final String ip = Utils.getIpAddr(BladeWebContext.request());
-		Runnable t = new Runnable() {
-			@Override
-			public void run() {
-				try {
-					AR.update("insert into t_userlog(uid, action, content, ip_addr, create_time) values(?, ?, ?, ?, ?)",
-							uid, action, content, ip, DateKit.getCurrentUnixTime()).executeUpdate();
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-		};
-		Utils.run(t);
+	public void save(final Integer uid, final String action, final String content) {
+		final String ip = Utils.getIpAddr(WebContextHolder.me().getRequest());
+		Utils.run( () -> {
+			Userlog userlog = new Userlog();
+			userlog.setUid(uid);
+			userlog.setAction(action);
+			userlog.setContent(content);
+			userlog.setIp_addr(ip);
+			userlog.setCreate_time(DateKit.getCurrentUnixTime());
+			activeRecord.insert(userlog);
+		} );
 	}
 	
 }

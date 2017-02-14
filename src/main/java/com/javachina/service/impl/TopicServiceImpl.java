@@ -1,37 +1,32 @@
 package com.javachina.service.impl;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import com.blade.ioc.annotation.Inject;
 import com.blade.ioc.annotation.Service;
-import com.blade.jdbc.AR;
-import com.blade.jdbc.Page;
-import com.blade.jdbc.QueryParam;
+import com.blade.jdbc.ar.SampleActiveRecord;
+import com.blade.jdbc.core.Take;
+import com.blade.jdbc.model.PageRow;
+import com.blade.jdbc.model.Paginator;
+import com.blade.kit.CollectionKit;
+import com.blade.kit.DateKit;
+import com.blade.kit.StringKit;
 import com.javachina.ImageTypes;
 import com.javachina.Types;
-import com.javachina.kit.DateKit;
+import com.javachina.dto.HomeTopic;
+import com.javachina.exception.TipException;
+import com.javachina.ext.PageHelper;
 import com.javachina.kit.Utils;
-import com.javachina.model.Comment;
-import com.javachina.model.Node;
-import com.javachina.model.Topic;
-import com.javachina.model.User;
-import com.javachina.service.CommentService;
-import com.javachina.service.NodeService;
-import com.javachina.service.NoticeService;
-import com.javachina.service.SettingsService;
-import com.javachina.service.TopicService;
-import com.javachina.service.UserService;
+import com.javachina.model.*;
+import com.javachina.service.*;
+import org.sql2o.Sql2o;
 
-import blade.kit.CollectionKit;
-import blade.kit.StringKit;
+import java.util.*;
 
 @Service
 public class TopicServiceImpl implements TopicService {
-	
+
+	@Inject
+	private SampleActiveRecord activeRecord;
+
 	@Inject
 	private UserService userService;
 	
@@ -47,24 +42,18 @@ public class TopicServiceImpl implements TopicService {
 	@Inject
 	private SettingsService settingsService;
 	
-	@Override
-	public Topic getTopic(Long tid) {
-		return AR.findById(Topic.class, tid);
-	}
+	@Inject
+	private TopicCountService topicCountService;
 	
 	@Override
-	public List<Map<String, Object>> getTopicList(QueryParam queryParam) {
-		if(null != queryParam){
-			List<Topic> topics = AR.find(queryParam).list(Topic.class);
-			return this.getTopicListMap(topics);
-		}
-		return null;
+	public Topic getTopic(Integer tid) {
+		return activeRecord.byId(Topic.class, tid);
 	}
-	
+
 	@Override
-	public Page<Map<String, Object>> getPageList(QueryParam queryParam) {
-		if(null != queryParam){
-			Page<Topic> topicPage = AR.find(queryParam).page(Topic.class);
+	public Paginator<Map<String, Object>> getPageList(Take take) {
+		if(null != take){
+			Paginator<Topic> topicPage = activeRecord.page(take);
 			return this.getTopicPageMap(topicPage);
 		}
 		return null;
@@ -83,64 +72,72 @@ public class TopicServiceImpl implements TopicService {
 		return topicMaps;
 	}
 	
-	private Page<Map<String, Object>> getTopicPageMap(Page<Topic> topicPage){
+	private Paginator<Map<String, Object>> getTopicPageMap(Paginator<Topic> topicPage){
+		long totalCount = topicPage.getTotal();
+		int page = topicPage.getPageNum();
+		int pageSize = topicPage.getLimit();
+		Paginator<Map<String, Object>> result = new Paginator<>(totalCount, page, pageSize);
 		
-		long totalCount = topicPage.getTotalCount();
-		int page = topicPage.getPage();
-		int pageSize = topicPage.getPageSize();
-		Page<Map<String, Object>> result = new Page<Map<String,Object>>(totalCount, page, pageSize);
-		
-		List<Topic> topics = topicPage.getResults();
+		List<Topic> topics = topicPage.getList();
 		List<Map<String, Object>> topicMaps = this.getTopicListMap(topics);
-		result.setResults(topicMaps);
-		
+		result.setList(topicMaps);
 		return result;
 	}
 	
 	@Override
-	public Long save(Long uid, Long nid, String title, String content, Integer isTop) {
-		
+	public Integer save(Topic topic) throws Exception {
+		if(null == topic){
+			throw new TipException("帖子信息为空");
+		}
 		try {
 			Integer time = DateKit.getCurrentUnixTime();
-			
-			Long tid = (Long) AR
-					.update("insert into t_topic(uid, nid, title, content, is_top, create_time, update_time, status) values(?, ?, ?, ?, ?, ?, ?, ?)",
-							uid, nid, title, content, isTop, time, time, 1).key();
-			
-			if(null != tid){
-				// 更新节点下的帖子数
-				nodeService.updateCount(nid, Types.topics.toString(), +1);
-				
-				// 更新总贴数
-				settingsService.updateCount(Types.topic_count.toString(), +1);
-				
-				// 通知@的人
-				if(null != tid){
-					Set<String> atUsers = Utils.getAtUsers(content);
-					if(CollectionKit.isNotEmpty(atUsers)){
-						for(String user_name : atUsers){
-							User user = userService.getUser(user_name);
-							if(null != user && !user.getUid().equals(uid)){
-								noticeService.save(Types.at.toString(), uid, user.getUid(), tid);
-							}
-						}
+			topic.setCreate_time(time);
+			topic.setUpdate_time(time);
+			topic.setStatus(1);
+
+			Long tid = activeRecord.insert(topic);
+			Integer uid = topic.getUid();
+			topicCountService.save(tid.intValue(), time);
+			this.updateWeight(tid.intValue());
+			// 更新节点下的帖子数
+			nodeService.updateCount(topic.getNid(), Types.topics.toString(), +1);
+			// 更新总贴数
+			settingsService.updateCount(Types.topic_count.toString(), +1);
+
+			// 通知@的人
+			Set<String> atUsers = Utils.getAtUsers(topic.getContent());
+			if(CollectionKit.isNotEmpty(atUsers)){
+				for(String user_name : atUsers){
+					User user = userService.getUserByLoginName(user_name);
+					if(null != user && !user.getUid().equals(topic.getUid())){
+						noticeService.save(Types.topic_at.toString(), uid, user.getUid(), tid.intValue());
 					}
 				}
 			}
-			return tid;
+			return tid.intValue();
 		} catch (Exception e) {
-			e.printStackTrace();
+			throw e;
 		}
-		return null;
 	}
 	
 	@Override
-	public boolean delete(Long tid) {
-		if(null != tid){
-			AR.update("update t_topic set status = 2 where tid = ?", tid).executeUpdate(true);
-			return true;
+	public void delete(Integer tid) throws Exception {
+		try {
+			if(null == tid){
+				throw new TipException("帖子id为空");
+			}
+			Topic topic = new Topic();
+			topic.setTid(tid);
+			topic.setStatus(2);
+			activeRecord.update(topic);
+
+			// 更新节点下的帖子数
+			nodeService.updateCount(topic.getNid(), Types.topics.toString(), +1);
+			// 更新总贴数
+			settingsService.updateCount(Types.topic_count.toString(), +1);
+		} catch (Exception e){
+			throw e;
 		}
-		return false;
 	}
 
 	@Override
@@ -148,10 +145,9 @@ public class TopicServiceImpl implements TopicService {
 		if(null == topic){
 			return null;
 		}
-		Long tid = topic.getTid();
-		Long uid = topic.getUid();
-		Long nid = topic.getNid();
-		Long comments = topic.getComments();
+		Integer tid = topic.getTid();
+		Integer uid = topic.getUid();
+		Integer nid = topic.getNid();
 		
 		User user = userService.getUser(uid);
 		Node node = nodeService.getNode(nid);
@@ -162,9 +158,19 @@ public class TopicServiceImpl implements TopicService {
 		
 		Map<String, Object> map = new HashMap<String, Object>();
 		map.put("tid", tid);
-		map.put("views", topic.getViews());
-		map.put("loves", topic.getLoves());
-		map.put("favorites", topic.getFavorites());
+		
+		TopicCount topicCount = topicCountService.getCount(tid);
+		Integer views = 0, loves = 0, favorites = 0, comments = 0;
+		if(null != topicCount){
+			views = topicCount.getViews();
+			loves = topicCount.getLoves();
+			favorites = topicCount.getFavorites();
+			comments = topicCount.getComments();
+		}
+		
+		map.put("views", views);
+		map.put("loves", loves);
+		map.put("favorites", favorites);
 		map.put("comments", comments);
 		map.put("title", topic.getTitle());
 		map.put("is_essence", topic.getIs_essence());
@@ -193,23 +199,7 @@ public class TopicServiceImpl implements TopicService {
 		return map;
 	}
 
-	@Override
-	public boolean updateCount(Long tid, String type, long count, boolean updateTime) {
-		if(null != tid && StringKit.isNotBlank(type)){
-			try {
-				StringBuffer upSql = new StringBuffer("update t_topic set %s = (%s + ?) ");
-				if(updateTime){
-					upSql.append(", update_time = " + DateKit.getCurrentUnixTime());
-				}
-				upSql.append(" where tid = ?");
-				AR.update(String.format(upSql.toString(), type, type), count, tid).executeUpdate();
-				return true;
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
-		return false;
-	}
+	
 
 	/**
 	 * 评论帖子
@@ -220,11 +210,14 @@ public class TopicServiceImpl implements TopicService {
 	 * @return
 	 */
 	@Override
-	public boolean comment(Long uid, Long to_uid, Long tid, String content, String ua) {
+	public boolean comment(Integer uid, Integer to_uid, Integer tid, String content, String ua) {
 		try {
-			boolean flag = commentService.save(uid, to_uid, tid, content, ua);
-			if(flag){
-				this.updateCount(tid, Types.comments.toString(), +1, true);
+			Integer cid = commentService.save(uid, to_uid, tid, content, ua);
+			if(null != cid){
+				
+				topicCountService.update(Types.comments.toString(), tid, 1);
+				this.updateWeight(tid);
+				
 				// 通知
 				if(!uid.equals(to_uid)){
 					noticeService.save(Types.comment.toString(), uid, to_uid, tid);
@@ -233,9 +226,9 @@ public class TopicServiceImpl implements TopicService {
 					Set<String> atUsers = Utils.getAtUsers(content);
 					if(CollectionKit.isNotEmpty(atUsers)){
 						for(String user_name : atUsers){
-							User user = userService.getUser(user_name);
+							User user = userService.getUserByLoginName(user_name);
 							if(null != user && !user.getUid().equals(uid)){
-								noticeService.save(Types.at.toString(), uid, user.getUid(), tid);
+								noticeService.save(Types.comment_at.toString(), uid, user.getUid(), cid);
 							}
 						}
 					}
@@ -252,19 +245,27 @@ public class TopicServiceImpl implements TopicService {
 	}
 
 	@Override
-	public Long getTopics(Long uid) {
+	public Integer getTopics(Integer uid) {
 		if(null != uid){
-			return AR.find("select count(1) from t_topic where uid = ? and status = 1", uid).first(Long.class);
+			Topic topic = new Topic();
+			topic.setUid(uid);
+			topic.setStatus(1);
+			return activeRecord.count(topic);
 		}
-		return 0L;
+		return 0;
 	}
 
 	@Override
-	public Long update(Long tid, Long nid, String title, String content) {
+	public Integer update(Integer tid, Integer nid, String title, String content) {
 		if(null != tid && null != nid && StringKit.isNotBlank(title) && StringKit.isNotBlank(content)){
 			try {
-				AR.update("update t_topic set nid = ?, title = ?, content = ?, update_time = ? where tid = ?",
-						nid, title, content, DateKit.getCurrentUnixTime(), tid).executeUpdate(true);
+				Topic topic = new Topic();
+				topic.setTid(tid);
+				topic.setNid(nid);
+				topic.setTitle(title);
+				topic.setContent(content);
+				topic.setUpdate_time(DateKit.getCurrentUnixTime());
+				activeRecord.update(topic);
 				return tid;
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -274,11 +275,180 @@ public class TopicServiceImpl implements TopicService {
 	}
 
 	@Override
-	public Long getLastTime(Long uid) {
+	public Integer getLastCreateTime(Integer uid) {
 		if(null == uid){
 			return null;
 		}
-		return AR.find("select update_time from t_topic where uid = ? order by update_time desc", uid).first(Long.class);
+		return activeRecord.one(Integer.class, "select create_time from t_topic where uid = ? order by create_time desc limit 1", uid);
 	}
 	
+	@Override
+	public Integer getLastUpdateTime(Integer uid) {
+		if(null == uid){
+			return null;
+		}
+		return activeRecord.one(Integer.class, "select update_time from t_topic where uid = ? order by create_time desc limit 1", uid);
+	}
+	
+	@Override
+	public void refreshWeight() throws Exception {
+		try {
+			List<Integer> topics = activeRecord.list("select tid from t_topic where status = 1", Integer.class);
+			if(null != topics) {
+				for(Integer tid : topics){
+					this.updateWeight(tid);
+				}
+			}
+		} catch (Exception e){
+			throw e;
+		}
+	}
+
+	public void updateWeight(Integer tid, Integer loves, Integer favorites, Integer comment, Integer sinks, Integer create_time) {
+		try {
+			double weight = Utils.getWeight(loves, favorites, comment, sinks, create_time);
+			Topic topic = new Topic();
+			topic.setTid(tid);
+			topic.setWeight(weight);
+			activeRecord.update(topic);
+		} catch (Exception e) {
+			throw e;
+		}
+	}
+
+	@Override
+	public Paginator<Map<String, Object>> getHotTopic(Integer nid, Integer page, Integer count) {
+		if(null == page || page < 1){
+			page = 1;
+		}
+		Take tp = new Take(Topic.class);
+		if(null != nid){
+			tp.eq("nid", nid);
+		}
+		tp.eq("status", 1).orderby("weight desc").page(page, count);
+		return this.getPageList(tp);
+	}
+
+	@Override
+	public Paginator<Map<String, Object>> getRecentTopic(Integer nid, Integer page, Integer count) {
+		if(null == page || page < 1){
+			page = 1;
+		}
+		Take tp = new Take(Topic.class);
+		if(null != nid){
+			tp.eq("nid", nid);
+		}
+		tp.eq("status", 1).orderby("create_time desc").page(page, count);
+		return this.getPageList(tp);
+	}
+
+	@Override
+	public void essence(Integer tid, Integer count) {
+		try {
+			Topic topic = new Topic();
+			topic.setTid(tid);
+			topic.setIs_essence(count);
+			activeRecord.update(topic);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	@Override
+	public void updateWeight(Integer tid) throws Exception {
+		try {
+			if(null == tid){
+				throw new TipException("帖子id为空");
+			}
+
+			TopicCount topicCount = topicCountService.getCount(tid);
+			Integer loves = topicCount.getLoves();
+			Integer favorites = topicCount.getFavorites();
+			Integer comment = topicCount.getComments();
+			Integer sinks = topicCount.getSinks();
+			Integer create_time = topicCount.getCreate_time();
+			this.updateWeight(tid, loves, favorites, comment, sinks, create_time);
+		} catch (Exception e){
+			throw e;
+		}
+	}
+
+	@Override
+	public Paginator<HomeTopic> getHomeTopics(Integer nid, int page, int limit) {
+		return getTopics(nid, page, limit, "a.weight desc");
+	}
+
+	@Override
+	public Paginator<HomeTopic> getRecentTopics(Integer nid, int page, int limit) {
+		return getTopics(nid, page, limit, "a.update_time desc");
+	}
+
+	@Override
+	public Paginator<HomeTopic> getEssenceTopics(int page, int limit) {
+		if(page <= 0){
+			page = 1;
+		}
+		if(limit <= 0 || limit >= 50){
+			limit = 20;
+		}
+		String sql = "select a.tid, a.title, c.title as node_title, c.slug as node_slug from t_topic a " +
+				"left join t_node c on a.nid = c.nid " +
+				"where a.status=1 and a.is_essence=1 order by a.create_time desc, a.update_time desc";
+
+		Sql2o sql2o = activeRecord.getSql2o();
+		Paginator<HomeTopic> topicPaginator = PageHelper.go(sql2o, HomeTopic.class, sql, new PageRow(page, limit));
+		return topicPaginator;
+
+	}
+
+	private Paginator<HomeTopic> getTopics(Integer nid, int page, int limit, String orderBy){
+		if(page <= 0){
+			page = 1;
+		}
+		if(limit <= 0 || limit >= 50){
+			limit = 20;
+		}
+		String sql = "select b.login_name, b.avatar, a.tid, a.title, a.create_time, a.update_time," +
+				" c.title as node_title, c.slug as node_slug, d.comments from t_topic a " +
+				"left join t_user b on a.uid = b.uid " +
+				"left join t_node c on a.nid = c.nid " +
+				"left join t_topiccount d on a.tid = d.tid " +
+				"where a.status=1 ";
+		if(null != nid){
+			sql += "and a.nid = :p1 ";
+		}
+		sql += "order by " + orderBy;
+
+		Sql2o sql2o = activeRecord.getSql2o();
+		Paginator<HomeTopic> topicPaginator;
+
+		if(null != nid){
+			topicPaginator = PageHelper.go(sql2o, HomeTopic.class, sql, new PageRow(page, limit), nid);
+		} else {
+			topicPaginator = PageHelper.go(sql2o, HomeTopic.class, sql, new PageRow(page, limit));
+		}
+		return topicPaginator;
+	}
+
+	@Override
+	public List<HomeTopic> getHotTopics(int page, int limit) {
+		if(page <= 0){
+			page = 1;
+		}
+		if(limit <= 0 || limit >= 50){
+			limit = 10;
+		}
+
+		String sql = "select b.login_name, b.avatar, a.tid, a.title from t_topic a " +
+				"left join t_user b on a.uid = b.uid " +
+				"left join t_topiccount d on a.tid = d.tid " +
+				"where a.status=1 order by a.weight desc, d.comments desc";
+
+		Sql2o sql2o = activeRecord.getSql2o();
+		Paginator<HomeTopic> topicPaginator = PageHelper.go(sql2o, HomeTopic.class, sql, new PageRow(page, limit));
+		if(null != topicPaginator){
+			return topicPaginator.getList();
+		}
+		return null;
+	}
 }

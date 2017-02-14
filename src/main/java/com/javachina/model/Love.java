@@ -1,46 +1,46 @@
 package com.javachina.model;
 
-import java.io.Serializable;
-
 import com.blade.jdbc.annotation.Table;
+
+import java.io.Serializable;
 
 /**
  * Love对象
  */
-@Table(value = "t_love", PK = "id")
+@Table(name = "t_love", pk = "id")
 public class Love implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 	
-	private Long id;
+	private Integer id;
 	
-	private Long tid;
+	private Integer tid;
 	
-	private Long uid;
+	private Integer uid;
 	
 	public Love(){}
 
-	public Long getId() {
+	public Integer getId() {
 		return id;
 	}
 
-	public void setId(Long id) {
+	public void setId(Integer id) {
 		this.id = id;
 	}
 
-	public Long getTid() {
+	public Integer getTid() {
 		return tid;
 	}
 
-	public void setTid(Long tid) {
+	public void setTid(Integer tid) {
 		this.tid = tid;
 	}
 
-	public Long getUid() {
+	public Integer getUid() {
 		return uid;
 	}
 
-	public void setUid(Long uid) {
+	public void setUid(Integer uid) {
 		this.uid = uid;
 	}
 	

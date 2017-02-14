@@ -1,14 +1,16 @@
 package com.javachina.kit;
 
-import com.blade.context.BladeWebContext;
-import com.blade.web.http.Request;
-import com.blade.web.http.Response;
-import com.blade.web.http.wrapper.Session;
+import com.blade.context.WebContextHolder;
+import com.blade.kit.StringKit;
+import com.blade.mvc.http.Request;
+import com.blade.mvc.http.Response;
+import com.blade.mvc.http.wrapper.Session;
 import com.javachina.Constant;
 import com.javachina.model.LoginUser;
 
-import blade.kit.AES;
-import blade.kit.StringKit;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 
 public class SessionKit {
 
@@ -38,7 +40,7 @@ public class SessionKit {
 	}
 	
 	public static LoginUser getLoginUser() {
-		Session session = BladeWebContext.session();
+		Session session = WebContextHolder.me().getRequest().session();
 		if(null == session){
 			return null;
 		}
@@ -47,23 +49,29 @@ public class SessionKit {
 	}
 	
 	private static final int one_month = 30*24*60*60;
-	
-	public static void setCookie(Response response, String cookieName, Long uid) {
+
+	public static void setCookie(Response response, String cookieName, Integer uid) {
 		if(null != response && StringKit.isNotBlank(cookieName) && null != uid){
-			String val = AES.encrypt(uid+"");
-			boolean isSSL = Constant.SITE_URL.startsWith("https");
-			String path = BladeWebContext.servletContext().getContextPath() + "/";
-			response.cookie(path, cookieName, val, one_month, isSSL);
+			try {
+				String val = Utils.encrypt(uid.toString(), Constant.AES_SALT);
+				boolean isSSL = Constant.SITE_URL.startsWith("https");
+				response.cookie("/", cookieName, val, one_month, isSSL);
+			} catch (Exception e){}
 		}
 	}
-	
+
 	public static void setCookie(Response response, String cookieName, String value) {
 		if(null != response && StringKit.isNotBlank(cookieName) && StringKit.isNotBlank(value)){
-			String val = AES.encrypt(value);
-			boolean isSSL = Constant.SITE_URL.startsWith("https");
-			response.removeCookie(cookieName);
-			String path = BladeWebContext.servletContext().getContextPath() + "/";
-			response.cookie(path, cookieName, val, 604800, isSSL);
+
+			try {
+				String data = Utils.encrypt(value, Constant.AES_SALT);
+				boolean isSSL = Constant.SITE_URL.startsWith("https");
+				response.removeCookie(cookieName);
+
+				String path = WebContextHolder.me().getContext().getContextPath();
+				response.cookie(path, cookieName, data, 604800, isSSL);
+			} catch (Exception e){
+			}
 		}
 	}
 	
@@ -72,7 +80,7 @@ public class SessionKit {
 			String val = request.cookie(cookieName);
 			if(StringKit.isNotBlank(val)){
 				try {
-					return AES.decrypt(val);
+					return Utils.decrypt(val, Constant.AES_SALT);
 				} catch (Exception e) {
 				}
 				return "";
@@ -86,4 +94,27 @@ public class SessionKit {
 		response.removeCookie(Constant.JC_REFERRER_COOKIE);
 	}
 	
+	public static String decode(String source, String enc) {
+		if (source == null || "".equals(source))
+			return "";
+		String ret = "";
+		try {
+			ret = URLDecoder.decode(source, enc);
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
+		return ret;
+	}
+	
+	public static String encode(String source, String enc) {
+		if (source == null || "".equals(source))
+			return "";
+		String ret = "";
+		try {
+			ret = URLEncoder.encode(source, enc);
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
+		return ret;
+	}
 }

@@ -7,8 +7,10 @@ public interface ActivecodeService {
 	
 	Activecode getActivecode(String code);
 	
-	String save(User user, String type);
+	String save(User user, String type) throws Exception;
 	
-	boolean useCode(String code);
+	boolean useCode(String code) throws Exception;
+
+	boolean resend(Integer uid) throws Exception;
 	
 }

@@ -3,14 +3,9 @@ package com.javachina.kit;
 import java.io.File;
 
 import com.blade.Blade;
-import com.javachina.Constant;
-import com.jmail.MailMessage;
-import com.jmail.MailSender;
-import com.jmail.MailSenderImpl;
-
-import blade.kit.DateKit;
-import blade.kit.logging.Logger;
-import blade.kit.logging.LoggerFactory;
+import com.blade.kit.DateKit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 定时任务工具类
@@ -19,14 +14,12 @@ public class CronKit {
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(CronKit.class);
 	
-	private static MailSender mailSender = new MailSenderImpl();
-	
 	/**
 	 * 备份数据库
 	 */
 	public static void backup() throws Exception {  
 		
-		Blade blade = Blade.me();
+		Blade blade = Blade.$();
 		
 	    String sqlpath = "/home/backup/";  
 	    String tableName = "backup-" + DateKit.getToday("yyyy-MM-ddHHmmss");
@@ -72,7 +65,7 @@ public class CronKit {
             
             System.out.println("pre send mail:" + file);
             
-            MailMessage mailMessage = new MailMessage();
+            /*MailMessage mailMessage = new MailMessage();
 			mailMessage
 			.subject("javachina数据库备份_" + DateKit.getToday("yyyy-MM-ddHHmmss"))
 			.from(Constant.MAIL_NICK, Constant.MAIL_USER)
@@ -80,7 +73,7 @@ public class CronKit {
 			.addTo("biezhi.me@gmail.com");
 			
 			mailSender.host(Constant.MAIL_HOST).username(Constant.MAIL_USER).password(Constant.MAIL_PASS);
-			mailSender.send(mailMessage, true);
+			mailSender.send(mailMessage, true);*/
 			
 			System.out.println("send mail end.");
 			

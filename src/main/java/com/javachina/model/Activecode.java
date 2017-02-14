@@ -1,20 +1,20 @@
 package com.javachina.model;
 
-import java.io.Serializable;
-
 import com.blade.jdbc.annotation.Table;
+
+import java.io.Serializable;
 
 /**
  * Activecode对象
  */
-@Table(value = "t_activecode", PK = "id")
+@Table(name = "t_activecode")
 public class Activecode implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 	
-	private Long id;
+	private Integer id;
 	
-	private Long uid;
+	private Integer uid;
 	
 	private String code;
 	
@@ -23,26 +23,26 @@ public class Activecode implements Serializable {
 	private Integer is_use;
 	
 	//过期时间
-	private Long expires_time;
+	private Integer expires_time;
 	
 	//创建时间
-	private Long create_time;
+	private Integer create_time;
 	
 	public Activecode(){}
 	
-	public Long getId() {
+	public Integer getId() {
 		return id;
 	}
 
-	public void setId(Long id) {
+	public void setId(Integer id) {
 		this.id = id;
 	}
 	
-	public Long getUid() {
+	public Integer getUid() {
 		return uid;
 	}
 
-	public void setUid(Long uid) {
+	public void setUid(Integer uid) {
 		this.uid = uid;
 	}
 	
@@ -62,19 +62,19 @@ public class Activecode implements Serializable {
 		this.is_use = is_use;
 	}
 	
-	public Long getExpires_time() {
+	public Integer getExpires_time() {
 		return expires_time;
 	}
 
-	public void setExpires_time(Long expires_time) {
+	public void setExpires_time(Integer expires_time) {
 		this.expires_time = expires_time;
 	}
 	
-	public Long getCreate_time() {
+	public Integer getCreate_time() {
 		return create_time;
 	}
 
-	public void setCreate_time(Long create_time) {
+	public void setCreate_time(Integer create_time) {
 		this.create_time = create_time;
 	}
 

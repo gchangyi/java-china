@@ -2,6 +2,7 @@ package com.javachina;
 
 public enum Types {
 	topic, 
+	topic_at,
 	topics, 
 	node, 
 	views,
@@ -13,7 +14,7 @@ public enum Types {
 	signup, 
 	comments, 
 	comment, 
-	at,
+	comment_at,
 	user_count, 
 	topic_count, 
 	comment_count, 
@@ -25,6 +26,9 @@ public enum Types {
 	setAdmin, 
 	recoveryAccount, 
 	allow_signup,
-	forgot
+	forgot, 
+	sinks,
+	topic_sinks, 
+	resend
 	
 }

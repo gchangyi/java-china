@@ -1,21 +1,21 @@
 package com.javachina.model;
 
-import java.io.Serializable;
-
 import com.blade.jdbc.annotation.Table;
+
+import java.io.Serializable;
 
 /**
  * Node对象
  */
-@Table(value = "t_node", PK = "nid")
+@Table(name = "t_node", pk = "nid")
 public class Node implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 	
-	private Long nid;
+	private Integer nid;
 	
 	//父节点id
-	private Long pid;
+	private Integer pid;
 	
 	//节点名称
 	private String title;
@@ -30,32 +30,32 @@ public class Node implements Serializable {
 	private String pic;
 	
 	//帖子数
-	private Long topics;
+	private Integer topics;
 	
 	//创建时间
-	private Long create_time;
+	private Integer create_time;
 	
 	//最后更新时间
-	private Long update_time;
+	private Integer update_time;
 	
 	//是否删除
 	private Integer is_del;
 	
 	public Node(){}
 	
-	public Long getNid() {
+	public Integer getNid() {
 		return nid;
 	}
 
-	public void setNid(Long nid) {
+	public void setNid(Integer nid) {
 		this.nid = nid;
 	}
 	
-	public Long getPid() {
+	public Integer getPid() {
 		return pid;
 	}
 
-	public void setPid(Long pid) {
+	public void setPid(Integer pid) {
 		this.pid = pid;
 	}
 	
@@ -83,19 +83,19 @@ public class Node implements Serializable {
 		this.slug = slug;
 	}
 	
-	public Long getTopics() {
+	public Integer getTopics() {
 		return topics;
 	}
 
-	public void setTopics(Long topics) {
+	public void setTopics(Integer topics) {
 		this.topics = topics;
 	}
 	
-	public Long getCreate_time() {
+	public Integer getCreate_time() {
 		return create_time;
 	}
 
-	public void setCreate_time(Long create_time) {
+	public void setCreate_time(Integer create_time) {
 		this.create_time = create_time;
 	}
 	
@@ -115,11 +115,11 @@ public class Node implements Serializable {
 		this.pic = pic;
 	}
 
-	public Long getUpdate_time() {
+	public Integer getUpdate_time() {
 		return update_time;
 	}
 
-	public void setUpdate_time(Long update_time) {
+	public void setUpdate_time(Integer update_time) {
 		this.update_time = update_time;
 	}
 	

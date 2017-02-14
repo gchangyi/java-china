@@ -2,7 +2,7 @@ package com.javachina.model;
 
 public class LoginUser {
 
-	private Long uid;
+	private Integer uid;
 	private String user_name;
 	private String nick_name;
 	private String pass_word;
@@ -13,8 +13,10 @@ public class LoginUser {
 	private long topics;
 	private long comments;
 	private long notices;
-	// 我收藏的主题数
-	private long favorites;
+	// 我收藏的帖子数
+	private long my_topics;
+	// 我收藏的节点数
+	private long my_nodes;
 	// 我关注的用户数
 	private long following;
 	
@@ -30,11 +32,11 @@ public class LoginUser {
 		this.pass_word = pass_word;
 	}
 
-	public Long getUid() {
+	public Integer getUid() {
 		return uid;
 	}
 
-	public void setUid(Long uid) {
+	public void setUid(Integer uid) {
 		this.uid = uid;
 	}
 
@@ -109,21 +111,28 @@ public class LoginUser {
 	public void setNotices(long notices) {
 		this.notices = notices;
 	}
-
-	public long getFavorites() {
-		return favorites;
-	}
-
-	public void setFavorites(long favorites) {
-		this.favorites = favorites;
-	}
-
 	public long getFollowing() {
 		return following;
 	}
 
 	public void setFollowing(long following) {
 		this.following = following;
+	}
+
+	public long getMy_topics() {
+		return my_topics;
+	}
+
+	public void setMy_topics(long my_topics) {
+		this.my_topics = my_topics;
+	}
+
+	public long getMy_nodes() {
+		return my_nodes;
+	}
+
+	public void setMy_nodes(long my_nodes) {
+		this.my_nodes = my_nodes;
 	}
 	
 }

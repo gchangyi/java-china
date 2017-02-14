@@ -1,24 +1,24 @@
 package com.javachina.model;
 
-import java.io.Serializable;
-
 import com.blade.jdbc.annotation.Table;
+
+import java.io.Serializable;
 
 /**
  * Topic对象
  */
-@Table(value = "t_topic", PK = "tid")
+@Table(name = "t_topic", pk = "tid")
 public class Topic implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 	
-	private Long tid;
+	private Integer tid;
 	
 	//发布人
-	private Long uid;
+	private Integer uid;
 	
 	//所属节点
-	private Long nid;
+	private Integer nid;
 	
 	//帖子标题
 	private String title;
@@ -26,56 +26,47 @@ public class Topic implements Serializable {
 	//帖子内容
 	private String content;
 	
-	//浏览量
-	private Long views;
-	
-	//被收藏数
-	private Long favorites;
-	
-	//获得点赞数
-	private Long loves;
-	
-	//评论数
-	private Long comments;
-	
 	//是否置顶
 	private Integer is_top;
 	
 	//是否是精华贴
 	private Integer is_essence;
 	
+	// 帖子权重
+	private Double weight;
+	
 	//帖子创建时间
-	private Long create_time;
+	private Integer create_time;
 	
 	//最后更新时间
-	private Long update_time;
+	private Integer update_time;
 	
 	//1:正常 2:删除
 	private Integer status;
 	
 	public Topic(){}
 	
-	public Long getTid() {
+	public Integer getTid() {
 		return tid;
 	}
 
-	public void setTid(Long tid) {
+	public void setTid(Integer tid) {
 		this.tid = tid;
 	}
 	
-	public Long getUid() {
+	public Integer getUid() {
 		return uid;
 	}
 
-	public void setUid(Long uid) {
+	public void setUid(Integer uid) {
 		this.uid = uid;
 	}
 	
-	public Long getNid() {
+	public Integer getNid() {
 		return nid;
 	}
 
-	public void setNid(Long nid) {
+	public void setNid(Integer nid) {
 		this.nid = nid;
 	}
 	
@@ -95,38 +86,6 @@ public class Topic implements Serializable {
 		this.content = content;
 	}
 	
-	public Long getViews() {
-		return views;
-	}
-
-	public void setViews(Long views) {
-		this.views = views;
-	}
-	
-	public Long getFavorites() {
-		return favorites;
-	}
-
-	public void setFavorites(Long favorites) {
-		this.favorites = favorites;
-	}
-	
-	public Long getLoves() {
-		return loves;
-	}
-
-	public void setLoves(Long loves) {
-		this.loves = loves;
-	}
-
-	public Long getComments() {
-		return comments;
-	}
-
-	public void setComments(Long comments) {
-		this.comments = comments;
-	}
-	
 	public Integer getIs_top() {
 		return is_top;
 	}
@@ -135,19 +94,19 @@ public class Topic implements Serializable {
 		this.is_top = is_top;
 	}
 	
-	public Long getCreate_time() {
+	public Integer getCreate_time() {
 		return create_time;
 	}
 
-	public void setCreate_time(Long create_time) {
+	public void setCreate_time(Integer create_time) {
 		this.create_time = create_time;
 	}
 	
-	public Long getUpdate_time() {
+	public Integer getUpdate_time() {
 		return update_time;
 	}
 
-	public void setUpdate_time(Long update_time) {
+	public void setUpdate_time(Integer update_time) {
 		this.update_time = update_time;
 	}
 	
@@ -158,13 +117,21 @@ public class Topic implements Serializable {
 	public void setStatus(Integer status) {
 		this.status = status;
 	}
-
+	
 	public Integer getIs_essence() {
 		return is_essence;
 	}
 
 	public void setIs_essence(Integer is_essence) {
 		this.is_essence = is_essence;
+	}
+
+	public Double getWeight() {
+		return weight;
+	}
+
+	public void setWeight(Double weight) {
+		this.weight = weight;
 	}
 	
 }

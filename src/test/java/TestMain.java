@@ -1,17 +1,21 @@
-import java.io.File;
-
-import blade.kit.FileKit;
+import com.javachina.kit.Utils;
 
 public class TestMain {
 
 	public static void main(String[] args) {
-		File[] files = FileKit.listDirSuffixFiles("/Users/Anne/workspace/java/java-china/src/main/webapp/assets/emojis", "png");
-		StringBuffer sBuffer = new StringBuffer();
-		for(File file : files){
-			String name = file.getName();
-			sBuffer.append("\""+name.substring(0, name.length() - 4)+"\", ");
-		}
-		System.out.println(sBuffer.toString());
+//		System.out.println(Utils.getWeight(0L, 0L, 0L, 0L, DateKit.getUnixTimeLong(DateKit.dateFormat("201604192000","yyyyMMddHHmm"))));
+//		System.out.println(Utils.getWeight(0L, 0L, -1L, 0L, DateKit.getUnixTimeLong(DateKit.dateFormat("201604202000","yyyyMMddHHmm"))));
+//		System.out.println(Utils.getWeight(10L, 2L, 0L, 0L, DateKit.getUnixTimeLong(DateKit.dateFormat("201604202000","yyyyMMddHHmm"))));
+//		System.out.println(Utils.getWeight(0L, 2L, 0L, 0L, DateKit.getUnixTimeLong(DateKit.dateFormat("201604202000","yyyyMMddHHmm"))));
+//		System.out.println(Utils.getWeight(20L, 0L, 0L, 0L, DateKit.getUnixTimeLong(DateKit.dateFormat("201604202000","yyyyMMddHHmm"))));
+//		System.out.println(Utils.getWeight(20L, 0L, 0L, 0L, DateKit.getUnixTimeLong(DateKit.dateFormat("201604211000","yyyyMMddHHmm"))));
+//		System.out.println(Utils.getWeight(2L, 10L, 0L, 0L, DateKit.getUnixTimeLong(DateKit.dateFormat("201604211000","yyyyMMddHHmm"))));
+//		System.out.println(Utils.getWeight(0L, 0L, 0L, 0L, DateKit.getUnixTimeLong(DateKit.dateFormat("201604211400","yyyyMMddHHmm"))));
+		
+		String str = " /photoa ";
+		System.out.println(str.trim().indexOf(' '));
+		
+		System.out.println(Utils.isLegalName("aaaaa"));
 	}
 
 }

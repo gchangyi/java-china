@@ -1,41 +1,44 @@
 package com.javachina.controller;
 
+import com.blade.ioc.annotation.Inject;
+import com.blade.jdbc.core.Take;
+import com.blade.jdbc.model.Paginator;
+import com.blade.kit.DateKit;
+import com.blade.kit.StringKit;
+import com.blade.mvc.annotation.Controller;
+import com.blade.mvc.annotation.PathParam;
+import com.blade.mvc.annotation.Route;
+import com.blade.mvc.http.HttpMethod;
+import com.blade.mvc.http.Request;
+import com.blade.mvc.http.Response;
+import com.blade.mvc.view.ModelAndView;
+import com.javachina.Actions;
+import com.javachina.Constant;
+import com.javachina.Types;
+import com.javachina.dto.HomeTopic;
+import com.javachina.kit.MapCache;
+import com.javachina.kit.SessionKit;
+import com.javachina.model.Comment;
+import com.javachina.model.LoginUser;
+import com.javachina.model.NodeTree;
+import com.javachina.model.Topic;
+import com.javachina.service.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
 
-import com.blade.ioc.annotation.Inject;
-import com.blade.jdbc.Page;
-import com.blade.jdbc.QueryParam;
-import com.blade.route.annotation.Path;
-import com.blade.route.annotation.PathVariable;
-import com.blade.route.annotation.Route;
-import com.blade.view.ModelAndView;
-import com.blade.web.http.HttpMethod;
-import com.blade.web.http.Request;
-import com.blade.web.http.Response;
-import com.javachina.Actions;
-import com.javachina.Constant;
-import com.javachina.Types;
-import com.javachina.kit.DateKit;
-import com.javachina.kit.SessionKit;
-import com.javachina.model.LoginUser;
-import com.javachina.model.Topic;
-import com.javachina.service.CommentService;
-import com.javachina.service.FavoriteService;
-import com.javachina.service.NodeService;
-import com.javachina.service.SettingsService;
-import com.javachina.service.TopicService;
-import com.javachina.service.UserService;
-import com.javachina.service.UserlogService;
-
-import blade.kit.StringKit;
-
-@Path("/")
+@Controller
 public class TopicController extends BaseController {
+
+	private static final Logger LOGGER = LoggerFactory.getLogger(TopicController.class);
 
 	@Inject
 	private TopicService topicService;
+	
+	@Inject
+	private TopicCountService topicCountService;
 	
 	@Inject
 	private NodeService nodeService;
@@ -55,11 +58,21 @@ public class TopicController extends BaseController {
 	@Inject
 	private UserlogService userlogService;
 	
+	@Inject
+	private TopicCountService typeCountService;
+
+	private MapCache mapCache = MapCache.single();
+
 	/**
 	 * 发布帖子页面
 	 */
 	@Route(value = "/topic/add", method = HttpMethod.GET)
 	public ModelAndView show_add_topic(Request request, Response response){
+		LoginUser user = SessionKit.getLoginUser();
+		if(null == user){
+			response.go("/");
+			return null;
+		}
 		this.putData(request);
 		Long pid = request.queryAsLong("pid");
 		request.attribute("pid", pid);
@@ -70,7 +83,7 @@ public class TopicController extends BaseController {
 	 * 编辑帖子页面
 	 */
 	@Route(value = "/topic/edit/:tid", method = HttpMethod.GET)
-	public ModelAndView show_ediot_topic(@PathVariable("tid") Long tid, Request request, Response response){
+	public ModelAndView show_ediot_topic(@PathParam("tid") Integer tid, Request request, Response response){
 		
 		LoginUser user = SessionKit.getLoginUser();
 		if(null == user){
@@ -106,10 +119,10 @@ public class TopicController extends BaseController {
 	 */
 	@Route(value = "/topic/edit", method = HttpMethod.POST)
 	public void edit_topic(Request request, Response response){
-		Long tid = request.queryAsLong("tid");
+		Integer tid = request.queryAsInt("tid");
 		String title = request.query("title");
 		String content = request.query("content");
-		Long nid = request.queryAsLong("nid");
+		Integer nid = request.queryAsInt("nid");
 		
 		LoginUser user = SessionKit.getLoginUser();
 		if(null == user){
@@ -160,6 +173,12 @@ public class TopicController extends BaseController {
 			this.error(response, "内容太长了，试试少吐点口水");
 			return;
 		}
+
+		Integer last_time = topicService.getLastUpdateTime(user.getUid());
+		if(null != last_time && (DateKit.getCurrentUnixTime() - last_time) < 10 ){
+			this.error(response, "您操作频率太快，过一会儿操作吧！");
+			return;
+		}
 		
 		try {
 			// 编辑帖子
@@ -182,7 +201,7 @@ public class TopicController extends BaseController {
 		
 		String title = request.query("title");
 		String content = request.query("content");
-		Long nid = request.queryAsLong("nid");
+		Integer nid = request.queryAsInt("nid");
 		
 		LoginUser user = SessionKit.getLoginUser();
 		
@@ -211,7 +230,7 @@ public class TopicController extends BaseController {
 			return;
 		}
 		
-		Long last_time = topicService.getLastTime(user.getUid());
+		Integer last_time = topicService.getLastCreateTime(user.getUid());
 		if(null != last_time && (DateKit.getCurrentUnixTime() - last_time) < 10 ){
 			this.error(response, "您操作频率太快，过一会儿操作吧！");
 			return;
@@ -219,7 +238,13 @@ public class TopicController extends BaseController {
 		
 		// 发布帖子
 		try {
-			Long tid = topicService.save(user.getUid(), nid, title, content, 0);
+			Topic topic = new Topic();
+			topic.setUid(user.getUid());
+			topic.setNid(nid);
+			topic.setTitle(title);
+			topic.setContent(content);
+			topic.setIs_top(0);
+			Integer tid = topicService.save(topic);
 			if(null != tid){
 				Constant.SYS_INFO = settingsService.getSystemInfo();
 				Constant.VIEW_CONTEXT.set("sys_info", Constant.SYS_INFO);
@@ -233,11 +258,10 @@ public class TopicController extends BaseController {
 			e.printStackTrace();
 			this.error(response, "帖子发布失败");
 		}
-		return;
 	}
 	
 	private void putData(Request request){
-		List<Map<String, Object>> nodes = nodeService.getNodeList();
+		List<NodeTree> nodes = nodeService.getTree();
 		request.attribute("nodes", nodes);
 	}
 	
@@ -245,32 +269,44 @@ public class TopicController extends BaseController {
 	 * 帖子详情页面
 	 */
 	@Route(value = "/topic/:tid", method = HttpMethod.GET)
-	public ModelAndView show_add_topic(@PathVariable("tid") Long tid, Request request, Response response){
+	public ModelAndView show_topic(@PathParam("tid") Integer tid, Request request, Response response){
 		
 		LoginUser user = SessionKit.getLoginUser();
-		
-		Long uid = null;
+
+		Integer uid = null;
 		if(null != user){
 			uid = user.getUid();
 		} else {
 			SessionKit.setCookie(response, Constant.JC_REFERRER_COOKIE, request.url());
 		}
 		
-		putDetail(request, response, uid, tid);
-		
-		// 刷新浏览数
-		topicService.updateCount(tid, Types.views.toString(), +1, false);
-		
-		return this.getView("topic_detail");
-	}
-	
-	private void putDetail(Request request, Response response, Long uid, Long tid){
-		
 		Topic topic = topicService.getTopic(tid);
 		if(null == topic){
 			response.go("/");
-			return;
+			return null;
 		}
+		
+		this.putDetail(request, uid, topic);
+
+		// 刷新浏览数
+		try {
+			Integer hits = mapCache.get(Constant.C_TOPIC_VIEWS + ":" + tid);
+			if(null == hits){
+				hits = 0;
+			}
+			hits += 1;
+			mapCache.set(Constant.C_TOPIC_VIEWS + ":" + tid, hits);
+			if(hits >= 10){
+				typeCountService.update(Types.views.toString(), tid, 10);
+				mapCache.set(Constant.C_TOPIC_VIEWS + ":" + tid, 0);
+			}
+		} catch (Exception e){
+			LOGGER.error("", e);
+		}
+		return this.getView("topic_detail");
+	}
+	
+	private void putDetail(Request request, Integer uid, Topic topic){
 		
 		Integer page = request.queryAsInt("p");
 		if(null == page || page < 1){
@@ -282,16 +318,16 @@ public class TopicController extends BaseController {
 		request.attribute("topic", topicMap);
 		
 		// 是否收藏
-		boolean is_favorite = favoriteService.isFavorite(Types.topic.toString(), uid, tid);
+		boolean is_favorite = favoriteService.isFavorite(Types.topic.toString(), uid, topic.getTid());
 		request.attribute("is_favorite", is_favorite);
 		
 		// 是否点赞
-		boolean is_love = favoriteService.isFavorite(Types.love.toString(), uid, tid);
+		boolean is_love = favoriteService.isFavorite(Types.love.toString(), uid, topic.getTid());
 		request.attribute("is_love", is_love);
-		
-		QueryParam cp = QueryParam.me();
-		cp.eq("tid", tid).orderby("cid asc").page(page, 20);
-		Page<Map<String, Object>> commentPage = commentService.getPageListMap(cp);
+
+		Take cp = new Take(Comment.class);
+		cp.and("tid", topic.getTid()).asc("cid").page(page, 20);
+		Paginator<Map<String, Object>> commentPage = commentService.getPageListMap(cp);
 		request.attribute("commentPage", commentPage);
 	}
 	
@@ -307,10 +343,9 @@ public class TopicController extends BaseController {
 			return;
 		}
 		
-		Long uid = user.getUid();
-		
+		Integer uid = user.getUid();
 		String content = request.query("content");
-		Long tid = request.queryAsLong("tid");
+		Integer tid = request.queryAsInt("tid");
 		Topic topic = topicService.getTopic(tid);
 		if(null == topic){
 			response.go("/");
@@ -326,16 +361,18 @@ public class TopicController extends BaseController {
 			this.error(response, "内容太长了，试试少吐点口水。");
 			return;
 		}
-		
-		Long last_time = topicService.getLastTime(user.getUid());
+
+		Integer last_time = topicService.getLastUpdateTime(user.getUid());
 		if(null != last_time && (DateKit.getCurrentUnixTime() - last_time) < 10 ){
 			this.error(response, "您操作频率太快，过一会儿操作吧！");
 			return;
 		}
 		
-		String ua = request.userAgent();
 		// 评论帖子
 		try {
+			
+			String ua = request.userAgent();
+			
 			boolean flag = topicService.comment(uid, topic.getUid(), tid, content, ua);
 			if(flag){
 				Constant.SYS_INFO = settingsService.getSystemInfo();
@@ -369,8 +406,8 @@ public class TopicController extends BaseController {
 			this.error(response, "您无权限操作");
 			return;
 		}
-		
-		Long tid = request.queryAsLong("tid");
+
+		Integer tid = request.queryAsInt("tid");
 		if(null == tid || tid == 0){
 			return;
 		}
@@ -382,12 +419,66 @@ public class TopicController extends BaseController {
 		}
 		
 		try {
-			Integer count = topic.getIs_essence() == 1 ? -1 : 1;
-			boolean updateTime = count > 0;
-			topicService.updateCount(tid, Types.is_essence.toString(), count, updateTime);
-			
+			Integer count = topic.getIs_essence() == 1 ? 0 : 1;
+			topicService.essence(tid, count);
 			userlogService.save(user.getUid(), Actions.ESSENCE, tid+":" + count);
 			
+			this.success(response, tid);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	/**
+	 * 帖子下沉
+	 */
+	@Route(value = "/sink", method = HttpMethod.POST)
+	public void sink(Request request, Response response){
+		
+		LoginUser user = SessionKit.getLoginUser();
+		if(null == user){
+			this.nosignin(response);
+			return;
+		}
+
+		Integer tid = request.queryAsInt("tid");
+		if(null == tid || tid == 0){
+			return;
+		}
+		
+		try {
+			boolean isFavorite = favoriteService.isFavorite(Types.sinks.toString(), user.getUid(), tid);
+			if(!isFavorite){
+				favoriteService.update(Types.sinks.toString(), user.getUid(), tid);
+				topicCountService.update(Types.sinks.toString(), tid, 1);
+				topicService.updateWeight(tid);
+				userlogService.save(user.getUid(), Actions.SINK, tid+"");
+			}
+			this.success(response, tid);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	/**
+	 * 删除帖子
+	 */
+	@Route(value = "/delete", method = HttpMethod.POST)
+	public void delete(Request request, Response response){
+		
+		LoginUser user = SessionKit.getLoginUser();
+		if(null == user){
+			this.nosignin(response);
+			return;
+		}
+
+		Integer tid = request.queryAsInt("tid");
+		if(null == tid || tid == 0 || user.getRole_id() > 2){
+			return;
+		}
+		
+		try {
+			topicService.delete(tid);
 			this.success(response, tid);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -401,15 +492,11 @@ public class TopicController extends BaseController {
 	public ModelAndView essencePage(Request request, Response response){
 		
 		// 帖子
-		QueryParam tp = QueryParam.me();
-		Integer page = request.queryAsInt("p");
-		
-		if(null == page || page < 1){
-			page = 1;
-		}
-		
-		tp.eq("status", 1).eq("is_essence", 1).orderby("update_time desc").page(page, 15);
-		Page<Map<String, Object>> topicPage = topicService.getPageList(tp);
+		Take tp = new Take(Topic.class);
+		Integer page = request.queryInt("p", 1);
+		Paginator<HomeTopic> topicPage = topicService.getEssenceTopics(page, 15);
+		tp.eq("status", 1).eq("is_essence", 1).desc("create_time", "update_time").page(page, 15);
+//		Paginator<Map<String, Object>> topicPage = topicService.getPageList(tp);
 		request.attribute("topicPage", topicPage);
 		
 		return this.getView("essence");

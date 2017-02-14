@@ -1,34 +1,41 @@
 package com.javachina.service.impl;
 
+import com.blade.ioc.annotation.Inject;
 import com.blade.ioc.annotation.Service;
-import com.blade.jdbc.AR;
-import com.javachina.kit.DateKit;
+import com.blade.jdbc.ActiveRecord;
+import com.blade.kit.DateKit;
+import com.blade.kit.StringKit;
 import com.javachina.model.Openid;
 import com.javachina.service.OpenIdService;
-
-import blade.kit.StringKit;
 
 @Service
 public class OpenIdServiceImpl implements OpenIdService {
 
+	@Inject
+	private ActiveRecord activeRecord;
+
 	@Override
-	public Openid getOpenid(String type, Long open_id) {
+	public Openid getOpenid(String type, Integer open_id) {
 		if(null == open_id || StringKit.isBlank(type)){
 			return null;
 		}
-		return AR.find("select * from t_openid where open_id = ? and type = ?", open_id, type).first(Openid.class);
+		Openid openid = new Openid();
+		openid.setOpen_id(open_id);
+		openid.setType(type);
+
+		return activeRecord.one(openid);
 	}
 
 	@Override
-	public boolean save(String type, Long open_id, Long uid) {
+	public boolean save(String type, Integer open_id, Integer uid) {
 		if(StringKit.isNotBlank(type) && null != open_id && null != uid){
 			try {
-				
-				Long count = AR.find("select count(1) from t_openid where open_id = ? and type = ? and uid = ?", open_id, type, uid).first(Long.class);
-				if(count == 0){
-					AR.update("insert into t_openid(type, open_id, uid, create_time) values(?, ?, ?, ?)", type, open_id,
-							uid, DateKit.getCurrentUnixTime()).executeUpdate();
-				}
+				Openid openid = new Openid();
+				openid.setType(type);
+				openid.setOpen_id(open_id);
+				openid.setUid(uid);
+				openid.setCreate_time(DateKit.getCurrentUnixTime());
+				activeRecord.insert(openid);
 				return true;
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -38,10 +45,12 @@ public class OpenIdServiceImpl implements OpenIdService {
 	}
 
 	@Override
-	public boolean delete(String type, Long open_id) {
+	public boolean delete(String type, Integer open_id) {
 		if(null != open_id && StringKit.isNotBlank(type)){
-			AR.update("delete from t_openid where type = ? and open_id = ?", type, open_id).executeUpdate();
-			return true;
+			Openid openid = new Openid();
+			openid.setOpen_id(open_id);
+			openid.setType(type);
+			return activeRecord.delete(openid) > 0;
 		}
 		return false;
 	}

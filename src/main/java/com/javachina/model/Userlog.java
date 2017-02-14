@@ -1,20 +1,20 @@
 package com.javachina.model;
 
-import java.io.Serializable;
-
 import com.blade.jdbc.annotation.Table;
+
+import java.io.Serializable;
 
 /**
  * Userlog对象
  */
-@Table(value = "t_userlog", PK = "id")
+@Table(name = "t_userlog", pk = "id")
 public class Userlog implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 	
-	private Long id;
+	private Integer id;
 	
-	private Long uid;
+	private Integer uid;
 	
 	private String action;
 	
@@ -22,23 +22,23 @@ public class Userlog implements Serializable {
 	
 	private String ip_addr;
 	
-	private Long create_time;
+	private Integer create_time;
 	
 	public Userlog(){}
 	
-	public Long getId() {
+	public Integer getId() {
 		return id;
 	}
 
-	public void setId(Long id) {
+	public void setId(Integer id) {
 		this.id = id;
 	}
 	
-	public Long getUid() {
+	public Integer getUid() {
 		return uid;
 	}
 
-	public void setUid(Long uid) {
+	public void setUid(Integer uid) {
 		this.uid = uid;
 	}
 	
@@ -58,11 +58,11 @@ public class Userlog implements Serializable {
 		this.content = content;
 	}
 	
-	public Long getCreate_time() {
+	public Integer getCreate_time() {
 		return create_time;
 	}
 
-	public void setCreate_time(Long create_time) {
+	public void setCreate_time(Integer create_time) {
 		this.create_time = create_time;
 	}
 

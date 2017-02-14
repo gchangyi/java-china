@@ -1,38 +1,31 @@
 package com.javachina.service.impl;
 
-import java.io.File;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import com.blade.ioc.annotation.Inject;
 import com.blade.ioc.annotation.Service;
-import com.blade.jdbc.AR;
-import com.blade.jdbc.Page;
-import com.blade.jdbc.QueryParam;
+import com.blade.jdbc.ActiveRecord;
+import com.blade.jdbc.core.Take;
+import com.blade.jdbc.model.Paginator;
+import com.blade.kit.*;
 import com.javachina.ImageTypes;
 import com.javachina.Types;
+import com.javachina.kit.MailKit;
 import com.javachina.kit.QiniuKit;
 import com.javachina.kit.Utils;
 import com.javachina.model.LoginUser;
 import com.javachina.model.User;
 import com.javachina.model.Userinfo;
-import com.javachina.service.ActivecodeService;
-import com.javachina.service.CommentService;
-import com.javachina.service.FavoriteService;
-import com.javachina.service.NoticeService;
-import com.javachina.service.TopicService;
-import com.javachina.service.UserService;
-import com.javachina.service.UserinfoService;
+import com.javachina.service.*;
 
-import blade.kit.DateKit;
-import blade.kit.EncrypKit;
-import blade.kit.FileKit;
-import blade.kit.StringKit;
+import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 public class UserServiceImpl implements UserService {
-	
+
+	@Inject
+	private ActiveRecord activeRecord;
+
 	@Inject
 	private ActivecodeService activecodeService;
 	
@@ -52,60 +45,74 @@ public class UserServiceImpl implements UserService {
 	private NoticeService noticeService;
 	
 	@Override
-	public User getUser(Long uid) {
-		return AR.findById(User.class, uid);
+	public User getUser(Integer uid) {
+		if(null == uid){
+			return null;
+		}
+		return activeRecord.byId(User.class, uid);
 	}
-	
+
 	@Override
-	public User getUser(QueryParam queryParam) {
-		return AR.find(queryParam).first(User.class);
+	public User getUser(Take take) {
+		if(null == take){
+			return null;
+		}
+		return activeRecord.one(take);
 	}
-		
+
 	@Override
-	public List<User> getUserList(QueryParam queryParam) {
-		if(null != queryParam){
-			return AR.find(queryParam).list(User.class);
+	public Paginator<User> getPageList(Take take) {
+		if(null != take){
+			return activeRecord.page(take);
 		}
 		return null;
 	}
 	
 	@Override
-	public Page<User> getPageList(QueryParam queryParam) {
-		if(null != queryParam){
-			return AR.find(queryParam).page(User.class);
-		}
-		return null;
-	}
-	
-	@Override
-	public User signup(String loginName, String passWord, String email) {
+	public User signup(String loginName, String passWord, String email) throws Exception {
 		if(StringKit.isBlank(loginName) || StringKit.isBlank(passWord) || StringKit.isBlank(email)){
 			return null;
 		}
+
+		if(hasUser(loginName)){
+			return null;
+		}
+
 		int time = DateKit.getCurrentUnixTime();
 		String pwd = EncrypKit.md5(loginName + passWord);
+		String avatar = "avatar/default/" + StringKit.getRandomNumber(1, 5) + ".png";
+
 		try {
-			
-			String avatar = "avatar/default/" + StringKit.getRandomNumber(1, 5) + ".png";
-			
-			Long uid = (Long) AR.update("insert into t_user(login_name, pass_word, email, avatar, status, create_time, update_time) values(?, ?, ?, ?, ?, ?, ?)",
-					loginName, pwd, email, avatar, 0, time, time).key();
-			
-			User user = this.getUser(uid);
-			
-			// 发送邮件通知
-			activecodeService.save(user, Types.signup.toString());
+			User user = new User();
+			user.setLogin_name(loginName);
+			user.setPass_word(pwd);
+			user.setEmail(email);
+			user.setAvatar(avatar);
+			user.setStatus(0);
+			user.setCreate_time(time);
+			user.setUpdate_time(time);
+			Long uid = activeRecord.insert(user);
+			if(null != uid){
+				user.setUid(uid.intValue());
+
+				userinfoService.save(user.getUid());
+
+				// 发送邮件通知
+				String code = activecodeService.save(user, Types.signup.toString());
+
+				//  发送注册邮件
+				MailKit.sendSignup(user.getLogin_name(), user.getEmail(), code);
+			}
 			return user;
 		} catch (Exception e) {
-			e.printStackTrace();
+			throw e;
 		}
-		return null;
 	}
 	
 	@Override
-	public boolean delete(Long uid) {
+	public boolean delete(Integer uid) {
 		if(null != uid){
-			AR.update("delete from t_user where uid = ?", uid).executeUpdate();
+			activeRecord.delete(User.class, uid);
 			return true;
 		}
 		return false;
@@ -122,61 +129,51 @@ public class UserServiceImpl implements UserService {
 		if(StringKit.isBlank(loginName) || StringKit.isBlank(passWord)){
 			return null;
 		}
+
 		String pwd = EncrypKit.md5(loginName + passWord);
-	    User user = AR.find("select * from t_user where login_name = ? and pass_word = ? and status in (0, 1)",
-				loginName, pwd).first(User.class);
-	    if(null == user){
-	    	user = AR.find("select * from t_user where email = ? and pass_word = ? and status in (0, 1)",
-					loginName, pwd).first(User.class);
-	    }
-		return user;
+
+		Take take = new Take(User.class);
+		take.eq("pass_word", pwd)
+			.in("status", 0, 1)
+			.eq("login_name", loginName)
+			.or("email", "=", loginName);
+
+		return activeRecord.one(take);
 	}
 
 	@Override
-	public Map<String, Object> getUserDetail(Long uid) {
+	public Map<String, Object> getUserDetail(Integer uid) {
 		Map<String, Object> map = new HashMap<String, Object>();
 		if(null != uid){
-			User user = this.getUser(uid);
-			if(null == user){
-				return map;
-			}
+
+			User user = activeRecord.byId(User.class, uid);
+			Userinfo userinfo = activeRecord.byId(Userinfo.class, uid);
+
+			map = BeanKit.beanToMap(userinfo);
 			map.put("username", user.getLogin_name());
 			map.put("uid", uid);
 			map.put("email", user.getEmail());
+			map.put("avatar", user.getAvatar());
+			map.put("create_time", user.getCreate_time());
 			String avatar = Utils.getAvatar(user.getAvatar(), ImageTypes.normal);
 			map.put("avatar", avatar);
-			map.put("create_time", user.getCreate_time());
-			
-			Userinfo userinfo = userinfoService.getUserinfo(uid);
-			if(null != userinfo){
-				map.put("jobs", userinfo.getJobs());
-				map.put("github", userinfo.getGithub());
-				map.put("weibo", userinfo.getWeibo());
-				map.put("nick_name", userinfo.getNick_name());
-				map.put("location", userinfo.getLocation());
-				map.put("signature", userinfo.getSignature());
-				map.put("web_site", userinfo.getWeb_site());
-				map.put("instructions", userinfo.getInstructions());
-			}
 		}
 		return map;
 	}
 	
 	@Override
-	public boolean updateStatus(Long uid, Integer status) {
+	public boolean updateStatus(Integer uid, Integer status) {
 		if(null != uid && null != status){
-			try {
-				AR.update("update t_user set status = ? where uid = ?", status, uid).executeUpdate(true);
-				return true;
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
+			User temp = new User();
+			temp.setUid(uid);
+			temp.setStatus(status);
+			activeRecord.update(temp);
 		}
 		return false;
 	}
 
 	@Override
-	public boolean updateAvatar(Long uid, String avatar_path) {
+	public boolean updateAvatar(Integer uid, String avatar_path) {
 		try {
 			if(null == uid || StringKit.isBlank(avatar_path)){
 				return false;
@@ -185,11 +182,9 @@ public class UserServiceImpl implements UserService {
 			File file = new File(avatar_path);
 			if(file.exists()){
 				
-				User user = this.getUser(uid);
-				if(null == user){
-					return false;
-				}
-				
+				User user = new User();
+				user.setUid(uid);
+
 				String ext = FileKit.getExtension(file.getName());
 				if(StringKit.isBlank(ext)){
 					ext = "png";
@@ -199,7 +194,8 @@ public class UserServiceImpl implements UserService {
 				
 				boolean flag = QiniuKit.upload(file, key);
 				if(flag){
-					AR.update("update t_user set avatar = ? where uid = ?", key, uid).executeUpdate();
+					user.setAvatar(key);
+					activeRecord.update(user);
 					return true;
 				}
 			}
@@ -210,12 +206,15 @@ public class UserServiceImpl implements UserService {
 	}
 	
 	@Override
-	public boolean updatePwd(Long uid, String newpwd) {
+	public boolean updatePwd(Integer uid, String newpwd) {
 		try {
 			if(null == uid || StringKit.isBlank(newpwd)){
 				return false;
 			}
-			AR.update("update t_user set pass_word = ? where uid = ?", newpwd, uid).executeUpdate();
+			User user = new User();
+			user.setUid(uid);
+			user.setPass_word(newpwd);
+			activeRecord.update(user);
 			return true;
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -224,7 +223,7 @@ public class UserServiceImpl implements UserService {
 	}
 
 	@Override
-	public LoginUser getLoginUser(User user, Long uid) {
+	public LoginUser getLoginUser(User user, Integer uid) {
 		if(null == user){
 			user = this.getUser(uid);
 		}
@@ -237,14 +236,14 @@ public class UserServiceImpl implements UserService {
 			loginUser.setRole_id(user.getRole_id());
 			String avatar = Utils.getAvatar(user.getAvatar(), ImageTypes.normal);
 			loginUser.setAvatar(avatar);
-			
-			Long comments = commentService.getComments(user.getUid());
+
+			Integer comments = commentService.getComments(user.getUid());
 			loginUser.setComments(comments);
-			
-			Long topics = topicService.getTopics(user.getUid());
+
+			Integer topics = topicService.getTopics(user.getUid());
 			loginUser.setTopics(topics);
-			
-			Long notices = noticeService.getNotices(user.getUid());
+
+			Integer notices = noticeService.getNotices(user.getUid());
 			loginUser.setNotices(notices);
 			
 			Userinfo userinfo = userinfoService.getUserinfo(user.getUid());
@@ -253,10 +252,13 @@ public class UserServiceImpl implements UserService {
 				loginUser.setNick_name(userinfo.getNick_name());
 			}
 			
-			Long favorites = favoriteService.favorites(Types.topic.toString(), user.getUid());
-			loginUser.setFavorites(favorites);
+			Integer my_topics = favoriteService.favorites(Types.topic.toString(), user.getUid());
+			Integer my_nodes = favoriteService.favorites(Types.node.toString(), user.getUid());
 			
-			Long following = favoriteService.favorites(Types.following.toString(), user.getUid());
+			loginUser.setMy_topics(my_topics);
+			loginUser.setMy_nodes(my_nodes);
+
+			Integer following = favoriteService.favorites(Types.following.toString(), user.getUid());
 			loginUser.setFollowing(following);
 			
 			return loginUser;
@@ -267,30 +269,39 @@ public class UserServiceImpl implements UserService {
 	@Override
 	public boolean hasUser(String login_name) {
 		if(StringKit.isNotBlank(login_name)){
-			Long count = AR.find("select count(1) from t_user where login_name = ? and status in (0, 1)", login_name).first(Long.class);
-			if(count == 0){
-				count = AR.find("select count(1) from t_user where email = ? and status in (0, 1)", login_name).first(Long.class);
-			}
-			return count > 0;
+			Take take = new Take(User.class);
+			take.in("status", 0, 1)
+					.eq("login_name", login_name)
+					.or("email", "=", login_name);
+
+			return activeRecord.count(take) > 0;
 		}
 		return false;
 	}
 
 	@Override
-	public User getUser(String user_name) {
+	public User getUserByLoginName(String user_name) {
 		if(StringKit.isNotBlank(user_name)){
-			return AR.find("select * from t_user where login_name = ? and status = 1", user_name).first(User.class);
+			Take take = new Take(User.class);
+			take.in("status", 0, 1)
+				.eq("login_name", user_name)
+				.or("email", "=", user_name);
+
+			return activeRecord.one(take);
 		}
 		return null;
 	}
 
 	@Override
-	public boolean updateRole(Long uid, Integer role_id) {
+	public boolean updateRole(Integer uid, Integer role_id) {
 		try {
 			if(null == uid || null == role_id || role_id == 1){
 				return false;
 			}
-			AR.update("update t_user set role_id = ? where uid = ?", role_id, uid).executeUpdate();
+			User temp = new User();
+			temp.setUid(uid);
+			temp.setRole_id(role_id);
+			activeRecord.update(temp);
 			return true;
 		} catch (Exception e) {
 			e.printStackTrace();

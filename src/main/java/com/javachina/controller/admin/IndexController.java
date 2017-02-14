@@ -1,36 +1,35 @@
 package com.javachina.controller.admin;
 
+import com.blade.Blade;
+import com.blade.ioc.annotation.Inject;
+import com.blade.jdbc.core.Take;
+import com.blade.jdbc.model.Paginator;
+import com.blade.kit.StringKit;
+import com.blade.mvc.annotation.Controller;
+import com.blade.mvc.annotation.PathParam;
+import com.blade.mvc.annotation.Route;
+import com.blade.mvc.http.HttpMethod;
+import com.blade.mvc.http.Request;
+import com.blade.mvc.http.Response;
+import com.blade.mvc.view.ModelAndView;
+import com.javachina.Constant;
+import com.javachina.Types;
+import com.javachina.controller.BaseController;
+import com.javachina.kit.MapCache;
+import com.javachina.model.Node;
+import com.javachina.model.User;
+import com.javachina.service.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.util.List;
 import java.util.Map;
 
-import com.blade.Blade;
-import com.blade.ioc.annotation.Inject;
-import com.blade.jdbc.AR;
-import com.blade.jdbc.Page;
-import com.blade.jdbc.QueryParam;
-import com.blade.route.annotation.Path;
-import com.blade.route.annotation.PathVariable;
-import com.blade.route.annotation.Route;
-import com.blade.view.ModelAndView;
-import com.blade.web.http.HttpMethod;
-import com.blade.web.http.Request;
-import com.blade.web.http.Response;
-import com.javachina.Constant;
-import com.javachina.Types;
-import com.javachina.controller.BaseController;
-import com.javachina.kit.CronKit;
-import com.javachina.model.Node;
-import com.javachina.model.User;
-import com.javachina.service.NodeService;
-import com.javachina.service.SettingsService;
-import com.javachina.service.TopicService;
-import com.javachina.service.UserService;
-
-import blade.kit.StringKit;
-
-@Path("/admin/")
+@Controller("/admin/")
 public class IndexController extends BaseController {
+
+	private static final Logger LOGGER = LoggerFactory.getLogger(IndexController.class);
 
 	@Inject
 	private TopicService topicService;
@@ -44,6 +43,11 @@ public class IndexController extends BaseController {
 	@Inject
 	private SettingsService settingsService;
 	
+	@Inject
+	private ActivecodeService activecodeService;
+
+	private MapCache mapCache = MapCache.single();
+
 	/**
 	 * 首页
 	 */
@@ -61,9 +65,9 @@ public class IndexController extends BaseController {
 		if(null == page || page < 1){
 			page = 1;
 		}
-		QueryParam np = QueryParam.me();
-		np.eq("is_del", 0).orderby("topics desc").page(page, 10);
-		Page<Map<String, Object>> nodePage = nodeService.getPageList(np);
+		Take np = new Take(Node.class);
+		np.eq("is_del", 0).page(page, 10, "topics desc");
+		Paginator<Map<String, Object>> nodePage = nodeService.getPageList(np);
 		request.attribute("nodePage", nodePage);
 		return this.getAdminView("nodes");
 	}
@@ -78,8 +82,8 @@ public class IndexController extends BaseController {
 	}
 	
 	public void putData(Request request){
-		QueryParam np = QueryParam.me();
-		np.eq("is_del", 0).eq("pid", 0).orderby("topics desc");
+		Take np = new Take(Node.class);
+		np.eq("is_del", 0).eq("pid", 0).desc("topics");
 		List<Node> nodes = nodeService.getNodeList(np);
 		request.attribute("nodes", nodes);
 	}
@@ -94,7 +98,7 @@ public class IndexController extends BaseController {
 		String title = request.query("node_name");
 		String description = request.query("description");
 		String node_slug = request.query("node_slug");
-		Long pid = request.queryAsLong("pid");
+		Integer pid = request.queryAsInt("pid");
 		String node_pic = request.query("node_pic");
 		
 		if(StringKit.isBlank(title) || StringKit.isBlank(node_slug) || null == pid){
@@ -103,24 +107,26 @@ public class IndexController extends BaseController {
 			request.attribute("node_slug", node_slug);
 			return this.getAdminView("add_node");
 		}
-		
-		boolean flag = nodeService.save(pid, title, description, node_slug, node_pic);
-		if(flag){
+
+		Node node = new Node();
+
+		try {
+			nodeService.save(node);
 			response.go("/admin/nodes");
-			return null;
-		} else {
+		} catch (Exception e){
+			LOGGER.error("添加节点失败", e);
 			request.attribute(this.ERROR, "节点添加失败");
 			request.attribute("node_name", title);
 			request.attribute("node_slug", node_slug);
-			return this.getAdminView("add_node");
 		}
+		return this.getAdminView("add_node");
 	}
 	
 	/**
 	 * 编辑节点页面
 	 */
 	@Route(value = "nodes/:nid", method = HttpMethod.GET)
-	public ModelAndView show_edit_node(@PathVariable("nid") Long nid, Request request, Response response){
+	public ModelAndView show_edit_node(@PathParam("nid") Integer nid, Request request, Response response){
 		
 		Map<String, Object> nodeMap = nodeService.getNodeDetail(null, nid);
 		request.attribute("node", nodeMap);
@@ -134,24 +140,31 @@ public class IndexController extends BaseController {
 	@Route(value = "nodes/edit", method = HttpMethod.POST)
 	public void edit_node(Request request, Response response){
 		
-		Long nid = request.queryAsLong("nid");
+		Integer nid = request.queryAsInt("nid");
 		String title = request.query("node_name");
 		String description = request.query("description");
 		String node_slug = request.query("node_slug");
-		Long pid = request.queryAsLong("pid");
+		Integer pid = request.queryAsInt("pid");
 		String node_pic = request.query("node_pic");
 		
 		if(StringKit.isNotBlank(node_pic)){
-			node_pic = Blade.me().webRoot() + File.separator + node_pic;
+			node_pic = Blade.$().webRoot() + File.separator + node_pic;
 		}
 		
-		boolean flag = nodeService.update(nid, pid, title, description, node_slug, node_pic);
-		if(flag){
+		try {
+			Node node = new Node();
+			node.setNid(nid);
+			node.setPid(pid);
+			node.setTitle(title);
+			node.setDescription(description);
+			node.setSlug(node_slug);
+			node.setPic(node_pic);
+			nodeService.update(node);
 			this.success(response, "");
-		} else {
+		} catch (Exception e){
+			LOGGER.error("节点修改失败", e);
 			this.error(response, "节点修改失败");
 		}
-		
 	}
 	
 	/**
@@ -164,13 +177,13 @@ public class IndexController extends BaseController {
 		if(null == page || page < 1){
 			page = 1;
 		}
-		QueryParam up = QueryParam.me();
+		Take up = new Take(User.class);
 		if(StringKit.isNotBlank(email)){
 			up.eq("email", email);
 			request.attribute("email", email);
 		}
 		up.orderby("update_time desc").page(page, 15);
-		Page<User> userPage = userService.getPageList(up);
+		Paginator<User> userPage = userService.getPageList(up);
 		request.attribute("userPage", userPage);
 		return this.getAdminView("users");
 	}
@@ -206,7 +219,7 @@ public class IndexController extends BaseController {
 	@Route(value = "status", method = HttpMethod.POST)
 	public void updateStatus(Request request, Response response){
 		String type = request.query("type");
-		Long uid = request.queryAsLong("uid");
+		Integer uid = request.queryAsInt("uid");
 		if(StringKit.isBlank(type) || null == uid){
 			this.error(response, "缺少参数");
 			return;
@@ -229,15 +242,24 @@ public class IndexController extends BaseController {
 		if(type.equals(Types.setAdmin.toString())){
 			role_id = 3;
 		}
-		
-		if(null != status){
-			userService.updateStatus(uid, status);
+
+		try {
+			// 重新发送激活邮件
+			if(type.equals(Types.resend.toString())){
+				activecodeService.resend(uid);
+			}
+			if(null != status){
+				userService.updateStatus(uid, status);
+			}
+
+			if(null != role_id){
+				userService.updateRole(uid, role_id);
+			}
+			this.success(response, "");
+		} catch (Exception e){
+			LOGGER.error("", e);
 		}
-		
-		if(null != role_id){
-			userService.updateRole(uid, role_id);
-		}
-		this.success(response, "");
+
 	}
 	
 	/**
@@ -260,18 +282,19 @@ public class IndexController extends BaseController {
 		}
 		
 		if(type.equals("clean_cache")){
-			AR.cleanCache();
+			mapCache.clean();
 			request.attribute(this.INFO, "执行成功");
 			return this.getAdminView("tools");
 		}
 		
-		if(type.equals("backupdb")){
+		// 刷新帖子权重，慎用会扫描全表
+		if(type.equals("refresh_weight")){
 			try {
-				CronKit.backup();
-				request.attribute(this.INFO, "备份成功，数据库文件已经发送到指定邮箱");
+				topicService.refreshWeight();
+				request.attribute(this.INFO, "权重刷新成功，请在首页进行查看。");
 			} catch (Exception e) {
 				e.printStackTrace();
-				request.attribute(this.ERROR, "备份失败");
+				request.attribute(this.ERROR, "刷新失败");
 			}
 			return this.getAdminView("tools");
 		}

@@ -2,21 +2,25 @@ package com.javachina.service.impl;
 
 import com.blade.ioc.annotation.Inject;
 import com.blade.ioc.annotation.Service;
-import com.blade.jdbc.AR;
+import com.blade.jdbc.ActiveRecord;
+import com.blade.kit.DateKit;
+import com.blade.kit.StringKit;
+import com.javachina.exception.TipException;
+import com.javachina.kit.MailKit;
 import com.javachina.model.Activecode;
 import com.javachina.model.User;
 import com.javachina.service.ActivecodeService;
-import com.javachina.service.SendMailService;
+import com.javachina.service.UserService;
 import com.javachina.service.UserinfoService;
-
-import blade.kit.DateKit;
-import blade.kit.StringKit;
 
 @Service
 public class ActivecodeServiceImpl implements ActivecodeService {
-	
+
 	@Inject
-	private SendMailService sendMailService;
+	private ActiveRecord activeRecord;
+
+	@Inject
+	private UserService userService;
 	
 	@Inject
 	private UserinfoService userinfoService;
@@ -26,61 +30,83 @@ public class ActivecodeServiceImpl implements ActivecodeService {
 		if(StringKit.isBlank(code)){
 			return null;
 		}
-		
-		return AR.find("select * from t_activecode where code = ?", code).first(Activecode.class);
+		Activecode temp = new Activecode();
+		temp.setCode(code);
+		return activeRecord.one(temp);
 	}
 	
 	public Activecode getActivecodeById(Integer id) {
 		if(null == id){
 			return null;
 		}
-		return AR.findById(Activecode.class, id);
+		return activeRecord.byId(Activecode.class, id);
 	}
 		
 	@Override
-	public String save(User user, String type) {
-		
+	public String save(User user, String type) throws Exception {
 		if(null == user || StringKit.isBlank(type)){
-			return null;
+			throw new TipException("用户信息为空或类型为空");
 		}
 		
 		int time = DateKit.getCurrentUnixTime();
 		int expires_time = time + 3600;
 		String code = StringKit.getRandomChar(32);
+		Activecode activecode = new Activecode();
+		activecode.setUid(user.getUid());
+		activecode.setCode(code);
+		activecode.setType(type);
+		activecode.setExpires_time(expires_time);
+		activecode.setCreate_time(time);
 		try {
-			
-			AR.update("insert into t_activecode(uid, code, type, expires_time, create_time) values(?, ?, ?, ?, ?)",
-					user.getUid(), code, type, expires_time, time).executeUpdate();
-			
-			userinfoService.save(user.getUid());
-			
-			if(type.equals("signup")){
-				sendMailService.signup(user.getLogin_name(), user.getEmail(), code);
-			}
-			
+			activeRecord.insert(activecode);
 			if(type.equals("forgot")){
-				sendMailService.forgot(user.getLogin_name(), user.getEmail(), code);
+				MailKit.sendForgot(user.getLogin_name(), user.getEmail(), code);
 			}
-			
 			return code;
-		} catch (Exception e) {
-			e.printStackTrace();
+		} catch (Exception e){
+			throw e;
 		}
-		return null;
 	}
 
 	@Override
-	public boolean useCode(String code) {
-		if(StringKit.isBlank(code)){
-			return false;
-		}
+	public boolean useCode(String code) throws Exception {
 		try {
-			AR.update("update t_activecode set is_use = ? where code = ?", 1, code).executeUpdate(true);
+			if(null == code){
+				throw new TipException("激活码为空");
+			}
+			activeRecord.execute("update t_activecode set is_use = 1 where code = '"+code+"'");
+			return true;
+		} catch (Exception e){
+			throw e;
+		}
+	}
+
+	@Override
+	public boolean resend(Integer uid) throws Exception {
+		User user = userService.getUser(uid);
+		if(null == user){
+			throw new TipException("不存在该用户");
+		}
+
+		try {
+
+			int time = DateKit.getCurrentUnixTime();
+			int expires_time = time + 3600;
+			String code = StringKit.getRandomChar(32);
+
+			Activecode activecode = new Activecode();
+			activecode.setUid(user.getUid());
+			activecode.setCode(code);
+			activecode.setType("signup");
+			activecode.setExpires_time(expires_time);
+			activecode.setCreate_time(time);
+
+			activeRecord.insert(activecode);
+			MailKit.sendSignup(user.getLogin_name(), user.getEmail(), code);
 			return true;
 		} catch (Exception e) {
-			e.printStackTrace();
+			throw e;
 		}
-		return false;
 	}
 	
 }

@@ -7,21 +7,21 @@ import com.blade.jdbc.annotation.Table;
 /**
  * Comment对象
  */
-@Table(value = "t_comment", PK = "cid")
+@Table(name = "t_comment", pk = "cid")
 public class Comment implements Serializable {
 
-	private static final long serialVersionUID = 1L;
+	private static final Long serialVersionUID = 1L;
 	
-	private Long cid;
+	private Integer cid;
 	
 	//评论人uid
-	private Long uid;
+	private Integer uid;
 	
 	//被评论人uid
-	private Long to_uid;
+	private Integer to_uid;
 	
 	//帖子id
-	private Long tid;
+	private Integer tid;
 	
 	//评论内容
 	private String content;
@@ -30,39 +30,39 @@ public class Comment implements Serializable {
 	private String device;
 	
 	//评论时间
-	private Long create_time;
+	private Integer create_time;
 	
 	public Comment(){}
 	
-	public Long getCid() {
+	public Integer getCid() {
 		return cid;
 	}
 
-	public void setCid(Long cid) {
+	public void setCid(Integer cid) {
 		this.cid = cid;
 	}
 	
-	public Long getUid() {
+	public Integer getUid() {
 		return uid;
 	}
 
-	public void setUid(Long uid) {
+	public void setUid(Integer uid) {
 		this.uid = uid;
 	}
 	
-	public Long getTo_uid() {
+	public Integer getTo_uid() {
 		return to_uid;
 	}
 
-	public void setTo_uid(Long to_uid) {
+	public void setTo_uid(Integer to_uid) {
 		this.to_uid = to_uid;
 	}
 	
-	public Long getTid() {
+	public Integer getTid() {
 		return tid;
 	}
 
-	public void setTid(Long tid) {
+	public void setTid(Integer tid) {
 		this.tid = tid;
 	}
 	
@@ -74,11 +74,11 @@ public class Comment implements Serializable {
 		this.content = content;
 	}
 	
-	public Long getCreate_time() {
+	public Integer getCreate_time() {
 		return create_time;
 	}
 
-	public void setCreate_time(Long create_time) {
+	public void setCreate_time(Integer create_time) {
 		this.create_time = create_time;
 	}
 

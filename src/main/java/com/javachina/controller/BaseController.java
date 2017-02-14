@@ -1,12 +1,11 @@
 package com.javachina.controller;
 
+import com.blade.kit.json.JSONObject;
+import com.blade.mvc.http.Response;
+import com.blade.mvc.view.ModelAndView;
+
 import java.util.HashMap;
 import java.util.Map;
-
-import com.blade.view.ModelAndView;
-import com.blade.web.http.Response;
-
-import blade.kit.json.JSONObject;
 
 public class BaseController {
 	

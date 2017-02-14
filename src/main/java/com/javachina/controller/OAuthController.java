@@ -1,19 +1,16 @@
 package com.javachina.controller;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.util.HashMap;
-import java.util.Map;
-
 import com.blade.ioc.annotation.Inject;
-import com.blade.jdbc.AR;
-import com.blade.jdbc.QueryParam;
-import com.blade.route.annotation.Path;
-import com.blade.route.annotation.Route;
-import com.blade.view.ModelAndView;
-import com.blade.web.http.HttpMethod;
-import com.blade.web.http.Request;
-import com.blade.web.http.Response;
+import com.blade.kit.StringKit;
+import com.blade.kit.http.HttpRequest;
+import com.blade.kit.json.JSONKit;
+import com.blade.kit.json.JSONObject;
+import com.blade.mvc.annotation.Controller;
+import com.blade.mvc.annotation.Route;
+import com.blade.mvc.http.HttpMethod;
+import com.blade.mvc.http.Request;
+import com.blade.mvc.http.Response;
+import com.blade.mvc.view.ModelAndView;
 import com.javachina.Constant;
 import com.javachina.Types;
 import com.javachina.kit.SessionKit;
@@ -22,15 +19,15 @@ import com.javachina.model.Openid;
 import com.javachina.model.User;
 import com.javachina.service.OpenIdService;
 import com.javachina.service.UserService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import blade.kit.StringKit;
-import blade.kit.http.HttpRequest;
-import blade.kit.json.JSONKit;
-import blade.kit.json.JSONObject;
-import blade.kit.logging.Logger;
-import blade.kit.logging.LoggerFactory;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.util.HashMap;
+import java.util.Map;
 
-@Path("/oauth/")
+@Controller("/oauth/")
 public class OAuthController extends BaseController {
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(OAuthController.class);
@@ -83,7 +80,7 @@ public class OAuthController extends BaseController {
 		 	System.out.println("body = " + body_);
 		 	
 		 	JSONObject user = JSONKit.parseObject(body_);
-		 	Long open_id = user.getLong("id");
+			Integer open_id = user.getInt("id");
 		 	String login = user.getString("login");
 		 	
 		 	// 判断用户是否已经绑定
@@ -170,8 +167,8 @@ public class OAuthController extends BaseController {
 				response.text("no_active");
 				return;
 			}
-			
-			Long open_id = Long.valueOf(githubInfo.get("open_id"));
+
+			Integer open_id = Integer.valueOf(githubInfo.get("open_id"));
 			boolean flag = openIdService.save(Types.github.toString(), open_id, user.getUid());
 			if(flag){
 				LoginUser loginUser = userService.getLoginUser(user, null);
@@ -186,37 +183,29 @@ public class OAuthController extends BaseController {
 			if(StringKit.isBlank(email)){
 				return;
 			}
-			
-			QueryParam queryParam = QueryParam.me();
-			queryParam.eq("login_name", login_name);
-			queryParam.in("status", AR.in(0, 1));
-			User user = userService.getUser(queryParam);
-			if(null != user){
+
+			boolean has = userService.hasUser(login_name);
+
+			if(has){
 				response.text("exist_login");
 				return;
 			}
 			
-			queryParam = QueryParam.me();
-			queryParam.eq("email", email);
-			queryParam.in("status", 0, 1);
-			user = userService.getUser(queryParam);
-			if(null != user){
-				response.text("exist_email");
-				return;
-			}
-			
-			User user_ = userService.signup(login_name, pass_word, email);
-			if(null != user_){
-				Long open_id = Long.valueOf(githubInfo.get("open_id"));
-				boolean saveFlag = openIdService.save(Types.github.toString(), open_id, user_.getUid());
-				if(saveFlag){
-					request.session().removeAttribute(Types.github.toString());
-					response.text(this.SUCCESS);
+			try {
+				User user_ = userService.signup(login_name, pass_word, email);
+				if(null != user_){
+					Integer open_id = Integer.valueOf(githubInfo.get("open_id"));
+					boolean saveFlag = openIdService.save(Types.github.toString(), open_id, user_.getUid());
+					if(saveFlag){
+						request.session().removeAttribute(Types.github.toString());
+						response.text(this.SUCCESS);
+					}
+				} else {
+					response.text(this.FAILURE);
 				}
-			} else {
-				response.text(this.FAILURE);
+			} catch (Exception e){
+
 			}
-			return;
 		}
 	}
 	

@@ -1,16 +1,13 @@
 package com.javachina.service.impl;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import com.blade.ioc.annotation.Inject;
 import com.blade.ioc.annotation.Service;
-import com.blade.jdbc.AR;
-import com.blade.jdbc.Page;
-import com.blade.jdbc.QueryParam;
+import com.blade.jdbc.ActiveRecord;
+import com.blade.jdbc.core.Take;
+import com.blade.jdbc.model.Paginator;
+import com.blade.kit.DateKit;
 import com.javachina.ImageTypes;
+import com.javachina.config.DBConfig;
 import com.javachina.kit.Utils;
 import com.javachina.model.Comment;
 import com.javachina.model.Topic;
@@ -19,11 +16,17 @@ import com.javachina.service.CommentService;
 import com.javachina.service.TopicService;
 import com.javachina.service.UserService;
 
-import blade.kit.DateKit;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class CommentServiceImpl implements CommentService {
-	
+
+	@Inject
+	private ActiveRecord activeRecord;
+
 	@Inject
 	private UserService userService;
 	
@@ -31,35 +34,27 @@ public class CommentServiceImpl implements CommentService {
 	private TopicService topicService;
 	
 	@Override
-	public Comment getComment(Long cid) {
-		return AR.findById(Comment.class, cid);
-	}
-		
-	@Override
-	public List<Comment> getCommentList(QueryParam queryParam) {
-		if(null != queryParam){
-			return AR.find(queryParam).list(Comment.class);
-		}
-		return null;
+	public Comment getComment(Integer cid) {
+		return activeRecord.byId(Comment.class, cid);
 	}
 	
 	@Override
-	public Page<Map<String, Object>> getPageListMap(QueryParam queryParam) {
-		if(null != queryParam){
-			Page<Comment> commentPage = AR.find(queryParam).page(Comment.class);
+	public Paginator<Map<String, Object>> getPageListMap(Take take) {
+		if(null != take){
+			Paginator<Comment> commentPage = activeRecord.page(take);
 			return this.getCommentPageMap(commentPage);
 		}
 		return null;
 	}
 	
-	private Page<Map<String, Object>> getCommentPageMap(Page<Comment> commentPage){
+	private Paginator<Map<String, Object>> getCommentPageMap(Paginator<Comment> commentPage){
 		
-		long totalCount = commentPage.getTotalCount();
-		int page = commentPage.getPage();
-		int pageSize = commentPage.getPageSize();
-		Page<Map<String, Object>> result = new Page<Map<String,Object>>(totalCount, page, pageSize);
+		long totalCount = commentPage.getTotal();
+		int page = commentPage.getPageNum();
+		int pageSize = commentPage.getLimit();
+		Paginator<Map<String, Object>> result = new Paginator<Map<String,Object>>(totalCount, page, pageSize);
 		
-		List<Comment> comments = commentPage.getResults();
+		List<Comment> comments = commentPage.getList();
 		
 		List<Map<String, Object>> nodeMaps = new ArrayList<Map<String,Object>>();
 		if(null != comments && comments.size() > 0){
@@ -71,19 +66,19 @@ public class CommentServiceImpl implements CommentService {
 			}
 		}
 		
-		result.setResults(nodeMaps);
+		result.setList(nodeMaps);
 		
 		return result;
 	}
 	
-	private Map<String, Object> getCommentDetail(Comment comment, Long cid) {
+	private Map<String, Object> getCommentDetail(Comment comment, Integer cid) {
 		Map<String, Object> map = new HashMap<String, Object>();
 		if(null == comment){
 			comment = this.getComment(cid);
 		}
 		if(null != comment){
 			
-			Long comment_uid = comment.getUid();
+			Integer comment_uid = comment.getUid();
 			User comment_user = userService.getUser(comment_uid);
 			Topic topic = topicService.getTopic(comment.getTid());
 			if(null == comment_user || null == topic){
@@ -106,37 +101,47 @@ public class CommentServiceImpl implements CommentService {
 	}
 
 	@Override
-	public boolean save(Long uid, Long toUid, Long tid, String content, String ua) {
+	public Integer save(Integer uid, Integer toUid, Integer tid, String content, String ua) {
 		try {
-			AR.update("insert into t_comment(uid, to_uid, tid, content, device, create_time) values(?, ?, ?, ?, ?, ?)",
-					uid, toUid, tid, content, ua, DateKit.getCurrentUnixTime()).executeUpdate();
-			return true;
+			Comment comment = new Comment();
+			comment.setUid(uid);
+			comment.setTo_uid(toUid);
+			comment.setTid(tid);
+			comment.setContent(content);
+			comment.setDevice(ua);
+			comment.setCreate_time(DateKit.getCurrentUnixTime());
+
+			Long cid = activeRecord.insert(comment);
+			return cid.intValue();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		return false;
+		return null;
 	}
 	
 	@Override
-	public boolean delete(Long cid) {
+	public boolean delete(Integer cid) {
 		if(null != cid){
-			AR.update("delete from t_comment where cid = ?", cid).executeUpdate();
-			return true;
+			return activeRecord.delete(Comment.class, cid) > 0;
 		}
 		return false;
 	}
 
 	@Override
-	public Comment getTopicLastComment(Long tid) {
-		return AR.find("select * from t_comment where tid = ? order by cid desc", tid).first(Comment.class);
+	public Comment getTopicLastComment(Integer tid) {
+		Take take = new Take(Comment.class);
+		take.eq("tid", tid).desc("cid");
+		return activeRecord.one(take);
 	}
 
 	@Override
-	public Long getComments(Long uid) {
+	public Integer getComments(Integer uid) {
 		if(null != uid){
-			return AR.find("select count(1) from t_comment where uid = ?", uid).first(Long.class);
+			Comment comment = new Comment();
+			comment.setUid(uid);
+			return activeRecord.count(comment);
 		}
-		return 0L;
+		return 0;
 	}
 		
 }

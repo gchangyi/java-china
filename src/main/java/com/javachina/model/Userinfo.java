@@ -1,13 +1,13 @@
 package com.javachina.model;
 
-import java.io.Serializable;
-
 import com.blade.jdbc.annotation.Table;
+
+import java.io.Serializable;
 
 /**
  * Userinfo对象
  */
-@Table(value = "t_userinfo", PK = "uid")
+@Table(name = "t_userinfo", pk = "uid")
 public class Userinfo implements Serializable {
 
 	private static final long serialVersionUID = 1L;

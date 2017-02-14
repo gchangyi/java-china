@@ -1,32 +1,32 @@
 package com.javachina.model;
 
-import java.io.Serializable;
-
 import com.blade.jdbc.annotation.Table;
+
+import java.io.Serializable;
 
 /**
  * Link对象
  */
-@Table(value = "t_link", PK = "id")
+@Table(name = "t_link", pk = "id")
 public class Link implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 	
-	private Long id;
+	private Integer id;
 	
 	private String title;
 	
 	private String url;
 	
-	private Long create_time;
+	private Integer create_time;
 	
 	public Link(){}
 	
-	public Long getId() {
+	public Integer getId() {
 		return id;
 	}
 
-	public void setId(Long id) {
+	public void setId(Integer id) {
 		this.id = id;
 	}
 	
@@ -46,11 +46,11 @@ public class Link implements Serializable {
 		this.url = url;
 	}
 	
-	public Long getCreate_time() {
+	public Integer getCreate_time() {
 		return create_time;
 	}
 
-	public void setCreate_time(Long create_time) {
+	public void setCreate_time(Integer create_time) {
 		this.create_time = create_time;
 	}
 	
