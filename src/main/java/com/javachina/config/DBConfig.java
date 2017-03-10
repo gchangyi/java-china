@@ -10,7 +10,8 @@ import com.blade.jdbc.ActiveRecord;
 import com.blade.jdbc.ar.SampleActiveRecord;
 import com.blade.kit.base.Config;
 import com.javachina.Constant;
-import org.sql2o.Sql2o;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.io.InputStream;
@@ -22,6 +23,8 @@ import java.util.Properties;
 @Component
 @Order(sort = 1)
 public class DBConfig implements BaseConfig {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(DBConfig.class);
 
     public ActiveRecord activeRecord;
 
@@ -40,11 +43,8 @@ public class DBConfig implements BaseConfig {
 
             Constant.SITE_URL = config.get("app.site_url");
             Constant.CDN_URL = config.get("app.cdn_url");
-
-            String cdn_url = configuration.config().get("qiniu.cdn");
-            String aesSalt = configuration.config().get("app.aes_salt", "0123456789abcdef");
-            Constant.CDN_URL = cdn_url;
-            Constant.AES_SALT = aesSalt;
+            Constant.AES_SALT = config.get("app.aes_salt", "0123456789abcdef");
+            Constant.UPLOAD_DIR = config.get("app.upload_dir");
 
             /**
              * github密钥配置
@@ -61,7 +61,7 @@ public class DBConfig implements BaseConfig {
             Constant.MAIL_USERNAME = config.get("mail.from");
             Constant.MAIL_PASS = config.get("mail.pass");
         } catch (Exception ex) {
-            ex.printStackTrace();
+            LOGGER.error("初始化数据库配置失败", ex);
         }
     }
 }

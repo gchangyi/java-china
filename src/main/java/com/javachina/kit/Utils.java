@@ -1,26 +1,10 @@
 package com.javachina.kit;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.nio.channels.FileChannel;
-import java.util.Calendar;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.Executors;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import com.blade.kit.StringKit;
 import com.blade.kit.http.HttpRequest;
 import com.blade.kit.json.JSONKit;
 import com.blade.mvc.http.Request;
 import com.javachina.Constant;
-import com.javachina.ImageTypes;
 import com.javachina.ext.Funcs;
 import com.javachina.ext.markdown.BlockEmitter;
 import com.javachina.ext.markdown.Configuration;
@@ -30,8 +14,17 @@ import sun.misc.BASE64Encoder;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
-import javax.servlet.http.HttpServletRequest;
-
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.channels.FileChannel;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * 工具类
@@ -95,11 +88,7 @@ public class Utils {
 		
 		return users;
 	}
-	
-	public static String getAvatar(String avatar, ImageTypes imageTypes){
-		return QiniuKit.getUrl(avatar + '-' + imageTypes.toString());
-	}
-	
+
 	public static boolean isEmail(String str){
 		if(StringKit.isBlank(str)){
 			return false;
@@ -154,31 +143,7 @@ public class Utils {
 			outputChannel.close();
 	    }
 	}
-	
-	public static Integer getTodayTime() {
-		Calendar today = Calendar.getInstance();
-		today.set(Calendar.HOUR_OF_DAY, 0);
-		today.set(Calendar.MINUTE, 0);
-		today.set(Calendar.SECOND, 0);
-		return Integer.valueOf(String.valueOf(today.getTimeInMillis()).substring(0, 10));
-	}
-	
-	public static Integer getYesterdayTime() {
-		Calendar today = Calendar.getInstance();
-		today.set(Calendar.HOUR_OF_DAY, -24);
-		today.set(Calendar.MINUTE, 0);
-		today.set(Calendar.SECOND, 0);
-		return Integer.valueOf(String.valueOf(today.getTimeInMillis()).substring(0, 10));
-	}
 
-	public static Integer getTomorrowTime() {
-		Calendar tomorrow = Calendar.getInstance();
-		tomorrow.set(Calendar.HOUR_OF_DAY, 24);
-		tomorrow.set(Calendar.MINUTE, 0);
-		tomorrow.set(Calendar.SECOND, 0);
-		return Integer.valueOf(String.valueOf(tomorrow.getTimeInMillis()).substring(0, 10));
-	}
-	
 	public static void run(Runnable t){
 		Executors.newSingleThreadExecutor().submit(t);
 	}
@@ -189,8 +154,12 @@ public class Utils {
             // Fenced code blocks are only available in 'extended mode'
             .forceExtentedProfile()
             .build();
-	
-	public static class CodeBlockEmitter implements BlockEmitter {
+
+    public static void upload(File file, String key) {
+
+    }
+
+    public static class CodeBlockEmitter implements BlockEmitter {
 		@Override
 		public void emitBlock(final StringBuilder out, final List<String> lines, final String meta) {
 			out.append("<pre><code");
@@ -286,45 +255,6 @@ public class Utils {
 		return Double.parseDouble(String.format("%.2f", order + sign * seconds / 45000));
 	}
 
-	public static String getIPAddr(HttpServletRequest request){
-		try {
-			String ipAddress = null;
-			//ipAddress = this.getRequest().getRemoteAddr();
-			ipAddress = request.getHeader("x-forwarded-for");
-			if(ipAddress == null || ipAddress.length() == 0 || "unknown".equalsIgnoreCase(ipAddress)) {
-				ipAddress = request.getHeader("Proxy-Client-IP");
-			}
-			if(ipAddress == null || ipAddress.length() == 0 || "unknown".equalsIgnoreCase(ipAddress)) {
-				ipAddress = request.getHeader("WL-Proxy-Client-IP");
-			}
-			if(ipAddress == null || ipAddress.length() == 0 || "unknown".equalsIgnoreCase(ipAddress)) {
-				ipAddress = request.getHeader("X-Real-IP");
-			}
-			if(ipAddress == null || ipAddress.length() == 0 || "unknown".equalsIgnoreCase(ipAddress)) {
-				ipAddress = request.getRemoteAddr();
-				if(ipAddress.equals("127.0.0.1")){
-					//根据网卡取本机配置的IP
-					InetAddress inet=null;
-					try {
-						inet = InetAddress.getLocalHost();
-					} catch (UnknownHostException e) {
-
-					}
-					ipAddress= inet.getHostAddress();
-				}
-
-			}
-			//对于通过多个代理的情况，第一个IP为客户端真实IP,多个IP按照','分割
-			if(ipAddress!=null && ipAddress.length()>15){ //"***.***.***.***".length() = 15
-				if(ipAddress.indexOf(",")>0){
-					ipAddress = ipAddress.substring(0,ipAddress.indexOf(","));
-				}
-			}
-			return ipAddress;
-		} catch (Exception e) {
-			return "";
-		}
-	}
 
 	/**
 	 * 在字符串左侧填充一定数量的特殊字符
@@ -348,27 +278,6 @@ public class Utils {
 	}
 
 	/**
-	 * 在字符串右侧填充一定数量的特殊字符
-	 *
-	 * @param o
-	 *            可被 toString 的对象
-	 * @param width
-	 *            字符数量
-	 * @param c
-	 *            字符
-	 * @return 新字符串
-	 */
-	public static String alignLeft(Object o, int width, char c) {
-		if (null == o)
-			return null;
-		String s = o.toString();
-		int length = s.length();
-		if (length >= width)
-			return s;
-		return new StringBuilder().append(s).append(dup(c, width - length)).toString();
-	}
-
-	/**
 	 * 复制字符
 	 *
 	 * @param c
@@ -385,8 +294,6 @@ public class Utils {
 			sb.append(c);
 		return sb.toString();
 	}
-
-
 
 	public static String encrypt(String plainText, String encryptionKey) throws Exception {
 		Cipher cipher = Cipher.getInstance("AES");

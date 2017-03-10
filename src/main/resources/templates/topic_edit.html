@@ -26,18 +26,17 @@
                                 #for(node : nodes)
 			                    	#if(node.pid == 0)
 			                    		#if(null != node.items)
-				                    		<optgroup label="${node.node_name}">
+				                    		<optgroup label="${node.title}"></optgroup>
 					                     	#for(item : node.items)
-					                     	<option #if(topic.nid == item.nid)selected="selected"#end value="${item.nid}">${item.node_name}</option>
+					                     	<option #if(topic.nid == item.nid)selected="selected"#end value="${item.nid}">${item.title}</option>
 					                     	#end
 				                     	#else
-				                     		<option value="${node.nid}">${node.node_name}</option>
+				                     		<option value="${node.nid}">${node.title}</option>
 			                    		#end
 			                    	#end
 			                    #end
                             </select>
                         </div>
-                        #end
                         <div class="form-group">
                             <label for="nid">帖子内容</label>
 	                        <div class="form-group">

@@ -9,10 +9,10 @@ import com.blade.jdbc.model.Paginator;
 import com.blade.kit.CollectionKit;
 import com.blade.kit.DateKit;
 import com.blade.kit.StringKit;
-import com.javachina.ImageTypes;
 import com.javachina.Types;
 import com.javachina.dto.HomeTopic;
 import com.javachina.exception.TipException;
+import com.javachina.ext.Funcs;
 import com.javachina.ext.PageHelper;
 import com.javachina.kit.Utils;
 import com.javachina.model.*;
@@ -85,59 +85,55 @@ public class TopicServiceImpl implements TopicService {
 	}
 	
 	@Override
-	public Integer save(Topic topic) throws Exception {
+	public Integer save(Topic topic) {
 		if(null == topic){
 			throw new TipException("帖子信息为空");
 		}
-		try {
-			Integer time = DateKit.getCurrentUnixTime();
-			topic.setCreate_time(time);
-			topic.setUpdate_time(time);
-			topic.setStatus(1);
+		Integer time = DateKit.getCurrentUnixTime();
+		topic.setCreate_time(time);
+		topic.setUpdate_time(time);
+		topic.setStatus(1);
 
-			Long tid = activeRecord.insert(topic);
-			Integer uid = topic.getUid();
-			topicCountService.save(tid.intValue(), time);
-			this.updateWeight(tid.intValue());
-			// 更新节点下的帖子数
-			nodeService.updateCount(topic.getNid(), Types.topics.toString(), +1);
-			// 更新总贴数
-			settingsService.updateCount(Types.topic_count.toString(), +1);
+		Long tid = activeRecord.insert(topic);
+		Integer uid = topic.getUid();
+		topicCountService.save(tid.intValue(), time);
+		this.updateWeight(tid.intValue());
+		// 更新节点下的帖子数
+		nodeService.updateCount(topic.getNid(), Types.topics.toString(), +1);
+		// 更新总贴数
+		settingsService.updateCount(Types.topic_count.toString(), +1);
 
-			// 通知@的人
-			Set<String> atUsers = Utils.getAtUsers(topic.getContent());
-			if(CollectionKit.isNotEmpty(atUsers)){
-				for(String user_name : atUsers){
-					User user = userService.getUserByLoginName(user_name);
-					if(null != user && !user.getUid().equals(topic.getUid())){
-						noticeService.save(Types.topic_at.toString(), uid, user.getUid(), tid.intValue());
-					}
+		// 通知@的人
+		Set<String> atUsers = Utils.getAtUsers(topic.getContent());
+		if(CollectionKit.isNotEmpty(atUsers)){
+			for(String user_name : atUsers){
+				User user = userService.getUserByLoginName(user_name);
+				if(null != user && !user.getUid().equals(topic.getUid())){
+					noticeService.save(Types.topic_at.toString(), uid, user.getUid(), tid.intValue());
 				}
 			}
-			return tid.intValue();
-		} catch (Exception e) {
-			throw e;
 		}
+		return tid.intValue();
 	}
 	
 	@Override
-	public void delete(Integer tid) throws Exception {
-		try {
-			if(null == tid){
-				throw new TipException("帖子id为空");
-			}
-			Topic topic = new Topic();
-			topic.setTid(tid);
-			topic.setStatus(2);
-			activeRecord.update(topic);
-
-			// 更新节点下的帖子数
-			nodeService.updateCount(topic.getNid(), Types.topics.toString(), +1);
-			// 更新总贴数
-			settingsService.updateCount(Types.topic_count.toString(), +1);
-		} catch (Exception e){
-			throw e;
+	public void delete(Integer tid) {
+		if(null == tid){
+			throw new TipException("帖子id为空");
 		}
+		Topic topic = this.getTopic(tid);
+		if(null == topic){
+			throw new TipException("不存在该帖子");
+		}
+		Topic temp = new Topic();
+		temp.setTid(tid);
+		temp.setStatus(2);
+		activeRecord.update(temp);
+
+		// 更新节点下的帖子数
+		nodeService.updateCount(topic.getNid(), Types.topics.toString(), +1);
+		// 更新总贴数
+		settingsService.updateCount(Types.topic_count.toString(), +1);
 	}
 
 	@Override
@@ -178,7 +174,7 @@ public class TopicServiceImpl implements TopicService {
 		map.put("update_time", topic.getUpdate_time());
 		map.put("user_name", user.getLogin_name());
 		
-		String avatar = Utils.getAvatar(user.getAvatar(), ImageTypes.small);
+		String avatar = Funcs.avatar_url(user.getAvatar());
 		
 		map.put("avatar", avatar);
 		map.put("node_name", node.getTitle());
@@ -291,7 +287,7 @@ public class TopicServiceImpl implements TopicService {
 	}
 	
 	@Override
-	public void refreshWeight() throws Exception {
+	public void refreshWeight() {
 		try {
 			List<Integer> topics = activeRecord.list("select tid from t_topic where status = 1", Integer.class);
 			if(null != topics) {
@@ -317,32 +313,6 @@ public class TopicServiceImpl implements TopicService {
 	}
 
 	@Override
-	public Paginator<Map<String, Object>> getHotTopic(Integer nid, Integer page, Integer count) {
-		if(null == page || page < 1){
-			page = 1;
-		}
-		Take tp = new Take(Topic.class);
-		if(null != nid){
-			tp.eq("nid", nid);
-		}
-		tp.eq("status", 1).orderby("weight desc").page(page, count);
-		return this.getPageList(tp);
-	}
-
-	@Override
-	public Paginator<Map<String, Object>> getRecentTopic(Integer nid, Integer page, Integer count) {
-		if(null == page || page < 1){
-			page = 1;
-		}
-		Take tp = new Take(Topic.class);
-		if(null != nid){
-			tp.eq("nid", nid);
-		}
-		tp.eq("status", 1).orderby("create_time desc").page(page, count);
-		return this.getPageList(tp);
-	}
-
-	@Override
 	public void essence(Integer tid, Integer count) {
 		try {
 			Topic topic = new Topic();
@@ -355,7 +325,7 @@ public class TopicServiceImpl implements TopicService {
 	}
 
 	@Override
-	public void updateWeight(Integer tid) throws Exception {
+	public void updateWeight(Integer tid) {
 		try {
 			if(null == tid){
 				throw new TipException("帖子id为空");

@@ -158,4 +158,3 @@ function update_node(){
 	});
 	return false;
 }
-	

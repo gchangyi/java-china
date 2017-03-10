@@ -6,8 +6,7 @@ import com.blade.jdbc.ActiveRecord;
 import com.blade.jdbc.core.Take;
 import com.blade.jdbc.model.Paginator;
 import com.blade.kit.DateKit;
-import com.javachina.ImageTypes;
-import com.javachina.config.DBConfig;
+import com.javachina.ext.Funcs;
 import com.javachina.kit.Utils;
 import com.javachina.model.Comment;
 import com.javachina.model.Topic;
@@ -91,7 +90,7 @@ public class CommentServiceImpl implements CommentService {
 			map.put("reply_name", comment_user.getLogin_name());
 			map.put("reply_time", comment.getCreate_time());
 			map.put("device", comment.getDevice());
-			map.put("reply_avatar", Utils.getAvatar(comment_user.getAvatar(), ImageTypes.small));
+			map.put("reply_avatar", Funcs.avatar_url(comment_user.getAvatar()));
 			map.put("title", topic.getTitle());
 			
 			String content = Utils.markdown2html(comment.getContent());

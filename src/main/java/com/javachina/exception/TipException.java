@@ -3,7 +3,7 @@ package com.javachina.exception;
 /**
  * Created by biezhi on 2016/12/30.
  */
-public class TipException extends Exception {
+public class TipException extends RuntimeException {
 
     public TipException() {
     }

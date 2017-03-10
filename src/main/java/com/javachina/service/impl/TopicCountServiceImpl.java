@@ -16,7 +16,7 @@ public class TopicCountServiceImpl implements TopicCountService {
 	private ActiveRecord activeRecord;
 
 	@Override
-	public void update(String type, Integer tid, int count) throws Exception {
+	public void update(String type, Integer tid, int count) {
 		if(StringKit.isBlank(type) || null == tid){
 			throw new TipException("帖子id为空");
 		}
@@ -37,7 +37,7 @@ public class TopicCountServiceImpl implements TopicCountService {
 	}
 
 	@Override
-	public void save(Integer tid, Integer create_time) throws Exception {
+	public void save(Integer tid, Integer create_time) {
 		try {
 			if(null == tid || tid < 1){
 				throw new TipException("帖子id为空");

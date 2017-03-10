@@ -9,7 +9,7 @@
                 <div class="panel-body">
                 	<form id="info_form" class="form-horizontal" role="form">
                         <div class="form-group">
-                            <label for="username" class="col-sm-2 control-label">用户名</label>
+                            <label class="col-sm-2 control-label">用户名</label>
                             <div class="col-sm-10">
                             	<p class="form-control-static">${profile.username}</p>
                             </div>
@@ -105,9 +105,7 @@
                     <h3 class="panel-title">修改密码</h3>
                 </div>
                 <div class="panel-body">
-                	#if(null!=error)<div class="alert alert-danger">${error}</div>#end
-                	#if(null!=info)<div class="alert alert-danger">${info}</div>#end
-                	<form id="pwd_form" class="form-horizontal" role="form" method="post" onsubmit="return user.update_pwd();">
+                	<form id="pwd_form" class="form-horizontal" role="form" method="post" onsubmit="return update_pwd();">
                         <div class="form-group">
                             <label for="email" class="col-sm-2 control-label">当前密码</label>
                             <div class="col-sm-10">

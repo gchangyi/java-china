@@ -6,11 +6,9 @@ import com.blade.jdbc.ActiveRecord;
 import com.blade.jdbc.core.Take;
 import com.blade.jdbc.model.Paginator;
 import com.blade.kit.*;
-import com.javachina.ImageTypes;
 import com.javachina.Types;
+import com.javachina.ext.Funcs;
 import com.javachina.kit.MailKit;
-import com.javachina.kit.QiniuKit;
-import com.javachina.kit.Utils;
 import com.javachina.model.LoginUser;
 import com.javachina.model.User;
 import com.javachina.model.Userinfo;
@@ -155,7 +153,7 @@ public class UserServiceImpl implements UserService {
 			map.put("email", user.getEmail());
 			map.put("avatar", user.getAvatar());
 			map.put("create_time", user.getCreate_time());
-			String avatar = Utils.getAvatar(user.getAvatar(), ImageTypes.normal);
+			String avatar = Funcs.avatar_url(user.getAvatar());
 			map.put("avatar", avatar);
 		}
 		return map;
@@ -191,13 +189,9 @@ public class UserServiceImpl implements UserService {
 				}
 				
 				String key = "avatar/" + user.getLogin_name() + "/" + StringKit.getRandomChar(4) + "/" + StringKit.getRandomNumber(4) + "." + ext;
-				
-				boolean flag = QiniuKit.upload(file, key);
-				if(flag){
-					user.setAvatar(key);
-					activeRecord.update(user);
-					return true;
-				}
+				user.setAvatar(key);
+				activeRecord.update(user);
+				return true;
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -234,7 +228,7 @@ public class UserServiceImpl implements UserService {
 			loginUser.setPass_word(user.getPass_word());
 			loginUser.setStatus(user.getStatus());
 			loginUser.setRole_id(user.getRole_id());
-			String avatar = Utils.getAvatar(user.getAvatar(), ImageTypes.normal);
+			String avatar = Funcs.avatar_url(user.getAvatar());
 			loginUser.setAvatar(avatar);
 
 			Integer comments = commentService.getComments(user.getUid());

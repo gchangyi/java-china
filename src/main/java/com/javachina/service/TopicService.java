@@ -16,19 +16,19 @@ public interface TopicService {
 	
 	Paginator<Map<String, Object>> getPageList(Take queryParam);
 
-	Integer save(Topic topic) throws Exception;
+	Integer save(Topic topic);
 
 	Integer update(Integer tid, Integer nid, String title, String content);
 	
 	boolean comment(Integer uid, Integer to_uid, Integer tid, String content, String ua);
 	
-	void delete(Integer tid) throws Exception;
+	void delete(Integer tid);
 	
-	void refreshWeight() throws Exception;
+	void refreshWeight();
 
-	void updateWeight(Integer tid) throws Exception;
+	void updateWeight(Integer tid);
 
-	void updateWeight(Integer tid, Integer loves, Integer favorites, Integer comment, Integer sinks, Integer create_time) throws Exception;
+	void updateWeight(Integer tid, Integer loves, Integer favorites, Integer comment, Integer sinks, Integer create_time);
 
 	Integer getTopics(Integer uid);
 
@@ -36,13 +36,7 @@ public interface TopicService {
 
 	Integer getLastUpdateTime(Integer uid);
 
-	Paginator<Map<String, Object>> getHotTopic(Integer nid, Integer page, Integer count);
-
-	Paginator<Map<String, Object>> getRecentTopic(Integer nid, Integer page, Integer count);
-
 	void essence(Integer tid, Integer count);
-
-	/* 新的 ↓↓↓ */
 
 	/**
 	 * 获取首页帖

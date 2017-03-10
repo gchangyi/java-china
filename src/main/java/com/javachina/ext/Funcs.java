@@ -3,8 +3,6 @@ package com.javachina.ext;
 import com.blade.kit.DateKit;
 import com.blade.kit.StringKit;
 import com.javachina.Constant;
-import com.javachina.ImageTypes;
-import com.javachina.kit.Utils;
 
 public class Funcs {
 
@@ -31,7 +29,10 @@ public class Funcs {
 	}
 	
 	public static String avatar_url(String avatar) {
-		return Utils.getAvatar(avatar, ImageTypes.normal);
+		if(!avatar.startsWith("http")){
+			return Constant.CDN_URL + "/" + avatar;
+		}
+		return avatar;
 	}
 	
 	public static String emoji(String content){

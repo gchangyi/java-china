@@ -5,19 +5,22 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>#if(title != null && title != '')${title} - #end ${sys_info.site_title ?! 'Java中国'} #if(title=='') - 优质开发者社区#end</title>
-    <link type="text/css" rel="stylesheet" href="${cdn}/assets/styles/main.min.css?ver=${version}" />
-    <link type="text/css" rel="stylesheet" href="${cdn}/assets/font-awesome-4.6.1/css/font-awesome.min.css?ver=${version}" />
-    <link type="text/css" rel="stylesheet" href="${cdn}/assets/lib/sweet-alert/sweetalert.min.css?ver=${version}" />
-    <link type="text/css" rel="stylesheet" href="${cdn}/assets/lib/ladda/ladda-themeless.min.css?ver=${version}" />
-    <link type="text/css" rel="stylesheet" href="${cdn}/assets/lib/nprogress/nprogress.min.css?ver=${version}" />
-    <script type="text/javascript" src="${cdn}/assets/scripts/jquery-2.2.0.min.js?ver=${version}"></script>
-    <link rel="shortcut icon" href="${cdn}/assets/favicon.ico" />
+    <link type="text/css" rel="stylesheet" href="/assets/styles/main.min.css?ver=${version}" />
+    <link type="text/css" rel="stylesheet" href="/assets/font-awesome-4.6.1/css/font-awesome.min.css?ver=${version}" />
+    <link type="text/css" rel="stylesheet" href="/assets/lib/sweet-alert/sweetalert.min.css?ver=${version}" />
+    <link type="text/css" rel="stylesheet" href="/assets/lib/ladda/ladda-themeless.min.css?ver=${version}" />
+    <link type="text/css" rel="stylesheet" href="/assets/lib/nprogress/nprogress.min.css?ver=${version}" />
+    <script type="text/javascript" src="/assets/scripts/jquery-2.2.0.min.js?ver=${version}"></script>
+    <link rel="shortcut icon" href="/assets/favicon.ico" />
 	<meta name="description" content="${sys_info.site_description ?! ''}" />
     <meta name="keywords" content="${sys_info.site_keywords ?! ''}" />
     <meta name="csrf-token" content="${csrf_token}"/>
     <meta name="google-site-verification" content="-fVfWY81Voot4r0-0Tt0uKva8SxwDyz3yXWIaX1HgEg" />
     <meta name="baidu-site-verification" content="b9WlfBhzs1" />
-    
+    <script type="text/javascript">
+        var BASE = '${base}';
+        var CDN_URL = '${cdn}';
+    </script>
     <!--[if lt IE 9]>
       <script src="http://cdn.bootcss.com/html5shiv/3.7.2/html5shiv.min.js"></script>
       <script src="http://cdn.bootcss.com/respond.js/1.4.2/respond.min.js"></script>

@@ -2,6 +2,7 @@ package com.javachina;
 
 import com.blade.kit.base.Config;
 import jetbrick.template.JetGlobalContext;
+import jetbrick.template.resolver.ParameterUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -18,12 +19,9 @@ public final class Constant {
 	 */
 	public static final String LOGIN_SESSION_KEY 	= "login_user";
 
-	public static final String UPLOAD_FOLDER 		= "assets/temp";
-
 	public static final String USER_IN_COOKIE 		= "SH_SIGNIN_USER";
 
 	public static final String JC_REFERRER_COOKIE 	= "JC_REFERRER_COOKIE";
-
 
 	/**
 	 * cache key
@@ -48,6 +46,11 @@ public final class Constant {
 	 * AES盐值
 	 */
 	public static String AES_SALT;
+
+	/**
+	 * 资源上传路径
+	 */
+	public static String UPLOAD_DIR;
 
 	/**
 	 * github密钥配置

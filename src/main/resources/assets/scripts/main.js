@@ -212,11 +212,10 @@ $('.topic-footer .essence').on('click', function(){
 //管理员删帖
 $('.topic-footer .deltopic').on('click', function(){
 	var tid = $(this).attr("tid");
-	var _this = $(this);
-	$.post(BASE + '/essence', {tid : tid}, function(response){
+	$.post(BASE + '/delete', {tid : tid}, function(response){
 		if(response){
 			if(response.status == 200){
-				window.location.reload();	
+				window.location.href= BASE + '/';
 			} else if(response.status == 401){
 				go_signin();
 			} else{
@@ -427,20 +426,30 @@ user.update_avatar = function(){
 	}
 };
 
-//修改密码
-user.update_pwd = function(){
+/**
+ * 修改密码
+ * @returns {boolean}
+ */
+function update_pwd() {
 	var formData = $('#pwd_form').serialize();
-	$.post(BASE + '/settings?type=pwd', formData, function(response){
-		if(response){
-			if(response.status == 200){
-				alertOk("密码修改成功!");	
-			} else if(response.status == 401){
-				go_signin();
-			} else{
-				alertError(response.msg);
+	$.ajax({
+		type: "POST",
+		url: '/settings?type=pwd',
+		data: formData,
+		dataType: 'json',
+		success: function (response) {
+			if(response){
+				if(response.status == 200){
+					alertOk("密码修改成功!");
+				} else if(response.status == 401){
+					go_signin();
+				} else{
+					alertError(response.msg);
+				}
 			}
 		}
 	});
+	return false;
 }
 
 ////////////////////个人设置:END//////////////////////
@@ -471,6 +480,7 @@ github.signup = function(){
 	});
 	return false;
 };
+
 
 github.signin = function(){
 	$.post(BASE + '/oauth/user/bind', {

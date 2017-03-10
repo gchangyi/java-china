@@ -22,13 +22,13 @@ public interface NodeService {
 
 	Paginator<Map<String, Object>> getPageList(Take take);
 
-	void save(Node node) throws Exception;
+	void save(Node node);
 
-	void delete(Integer nid) throws Exception;
+	void delete(Integer nid);
 
-	void updateCount(Integer nid, String type, int count) throws Exception;
+	void updateCount(Integer nid, String type, int count);
 
-	void update(Node node) throws Exception;
+	void update(Node node);
 
     List<Node> getHotNodes(int page, int limit);
 }
